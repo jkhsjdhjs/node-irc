@@ -1,3 +1,10 @@
+# 1.0.1 to 1.1.0 (2021-07-26)
+## Added
+* A getter for maxLineLength
+
+## Fixed
+* Fixed multiline CAP responses not being processed correctly
+
 # 0.3.8 to 0.3.9 (2015-01-16)
 ## Added
 * Included notes in the README about icu / iconv
