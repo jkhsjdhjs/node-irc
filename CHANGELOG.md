@@ -1,9 +1,32 @@
-# 1.0.1 to 1.1.0 (2021-07-26)
-## Added
-* A getter for maxLineLength
+1.1.1 (2021-07-27)
+===================
 
-## Fixed
-* Fixed multiline CAP responses not being processed correctly
+Bugfixes
+--------
+
+- Fix when 'registered' is emitted ([\#75](https://github.com/matrix-org/node-irc/issues/75))
+
+
+Internal Changes
+----------------
+
+- Add towncrier-based changelog setup ([\#76](https://github.com/matrix-org/node-irc/issues/76))
+
+ 1.1.0 (2021-07-26)
+===================
+
+Features
+--------
+
+ - Add a getter for maxLineLength
+
+Bugfixes
+--------
+
+ - Fix multiline CAP responses not being processed correctly
+
+ Pre 1.1.0
+==========
 
 # 0.3.8 to 0.3.9 (2015-01-16)
 ## Added
