@@ -1,3 +1,12 @@
+ 1.2.0 (2021-08-18)
+===================
+
+Bugfixes
+--------
+
+- Fix an issue where setting `opts.encodingFallback` would cause the process to crash. ([\#84](https://github.com/matrix-org/node-irc/issues/84))
+
+
 1.1.1 (2021-07-27)
 ===================
 
