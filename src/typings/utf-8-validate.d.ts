@@ -1,2 +1,2 @@
-declare function isUTF8Valid(data: string): boolean;
+declare function isUTF8Valid(data: Buffer): boolean;
 export = isUTF8Valid;

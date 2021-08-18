@@ -1585,7 +1585,7 @@ export class Client extends EventEmitter {
         }
         else if (this.opt.encodingFallback) {
             try {
-                if (!isValidUTF8(str)) {
+                if (!isValidUTF8(buffer)) {
                     return Iconv.decode(buffer, this.opt.encodingFallback).toString();
                 }
             }
