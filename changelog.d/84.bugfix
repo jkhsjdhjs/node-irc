@@ -1,0 +1,1 @@
+Fix an issue where setting `opts.encodingFallback` would cause the process to crash.
