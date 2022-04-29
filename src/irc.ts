@@ -1441,7 +1441,7 @@ export class Client extends EventEmitter {
         if (!text) {
             return [];
         }
-        return text.toString().split(/\r?\n/).filter((line) => line.length > 0)
+        return text.toString().split(/\r\n|\r|\n/).filter((line) => line.length > 0)
             .map((line) => splitLongLines(line, maxLength))
             .reduce((a, b) => a.concat(b), []);
     }
