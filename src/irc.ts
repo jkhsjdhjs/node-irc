@@ -1407,9 +1407,11 @@ export class Client extends EventEmitter {
         if (typeof text === 'undefined') {
             return;
         }
-        await Promise.all(text.toString().split(/\r?\n/).filter((line) =>
-            line.length > 0
-        ).map((line) => this.say(channel, '\u0001ACTION ' + line + '\u0001')));
+        await Promise.all(
+            this._splitMessage(
+                channel + '\u0001ACTION ' + '\u0001', text
+            ).map((line) => this.say(channel, '\u0001ACTION ' + line + '\u0001'))
+        );
     }
 
     // E.g. isUserPrefixMorePowerfulThan("@", "&")
