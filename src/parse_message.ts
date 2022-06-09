@@ -61,8 +61,8 @@ export function parseMessage(line: string, stripColors: boolean): Message {
     let middle, trailing;
 
     // Parse parameters
-    if (line.search(/^:| +:/) !== -1) {
-        match = line.match(/(.*?)(?:^:| +:)(.*)/);
+    if (line.search(/^:|\s+:/) !== -1) {
+        match = line.match(/(.*?)(?:^:|\s+:)(.*)/);
         if (!match) {
             throw Error('Invalid format, could not parse parameters');
         }
