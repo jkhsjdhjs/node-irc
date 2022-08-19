@@ -1168,7 +1168,7 @@ export class Client extends EventEmitter {
         if (this.opt.secure) {
             let secureOpts: tls.ConnectionOptions = {
                 ...connectionOpts,
-                rejectUnauthorized: !this.opt.selfSigned,
+                rejectUnauthorized: !(this.opt.selfSigned || this.opt.certExpired),
             }
 
             if (typeof this.opt.secure === 'object') {
