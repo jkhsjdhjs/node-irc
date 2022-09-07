@@ -26,20 +26,21 @@
   },
   "license": "GPL-3.0",
   "dependencies": {
-    "chardet": "^1.3.0",
-    "iconv-lite": "^0.6.2",
+    "chardet": "^1.4.0",
+    "iconv-lite": "^0.6.3",
     "irc-colors": "^1.5.0",
-    "utf-8-validate": "^5.0.5"
+    "utf-8-validate": "^5.0.9"
   },
   "devDependencies": {
-    "@types/node": "^14",
+    "@types/node": "^16",
     "@types/utf-8-validate": "^5.0.0",
-    "@typescript-eslint/eslint-plugin": "^4.24.0",
-    "@typescript-eslint/parser": "^4.24.0",
-    "eslint": "^7.26.0",
-    "tap": "^15.0.9",
-    "tape": "^5.2.2",
-    "typescript": "^4.2.4"
+    "@typescript-eslint/eslint-plugin": "^5.36.2",
+    "@typescript-eslint/parser": "^5.36.2",
+    "eslint": "^8.23.0",
+    "tap": "^16.3.0",
+    "tape": "^5.6.0",
+    "typed-emitter": "^2.1.0",
+    "typescript": "^4.8.2"
   },
   "tap": {
     "check-coverage": false,
