@@ -811,7 +811,6 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         }
         this.emit('message', from, to, msgText, message);
         if (this.supportedState.channel.types.indexOf(to.charAt(0)) !== -1) {
-            this.emit('message#', from, to, msgText, message);
             this.emit(
                 ('message' + to) as MessageEventIndex, from, msgText, message);
             if (to !== to.toLowerCase()) {
