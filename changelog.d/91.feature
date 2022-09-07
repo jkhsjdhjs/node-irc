@@ -1,0 +1,1 @@
+The `Client` class now uses strong typing for it's emitter.
