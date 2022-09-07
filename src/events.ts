@@ -3,7 +3,7 @@ import { Message } from './parse_message';
 
 type IrcChannelName = string;
 type CtcpType = string;
-type MessageNick = string|undefined;
+type MessageNick = string;
 
 export type CtcpEventIndex = `ctcp-${CtcpType}`;
 
@@ -21,8 +21,10 @@ export type ClientEvents = {
     registered: () => void,
     notice: (from: MessageNick, to: string, noticeText: string, message: Message) => void,
     mode_is: (channel: IrcChannelName, mode: string) => void,
-    '+mode': (channel: IrcChannelName, nick: MessageNick, mode: string, user: MessageNick, message: Message) => void,
-    '-mode': (channel: IrcChannelName, nick: MessageNick, mode: string, user: MessageNick, message: Message) => void,
+    '+mode': (
+        channel: IrcChannelName, nick: MessageNick, mode: string, user: string|undefined, message: Message) => void,
+    '-mode': (
+        channel: IrcChannelName, nick: MessageNick, mode: string, user: string|undefined, message: Message) => void,
     nick: (oldNick: MessageNick, newNick: string, channels: string[], message: Message) => void,
     motd: (modt: string) => void,
     action: (from: string, to: string, action: string, message: Message) => void,
@@ -31,7 +33,7 @@ export type ClientEvents = {
     raw: (message: Message) => void,
     kick: (channel: IrcChannelName, who: string, by: MessageNick, reason: string, message: Message) => void,
     names: (channel: IrcChannelName, users: Map<string, string>) => void
-    topic: (channel: IrcChannelName, topic: string|undefined, by: MessageNick, message: Message) => void,
+    topic: (channel: IrcChannelName, topic: string, by: MessageNick, message: Message) => void,
     channellist: (items: ChanListItem[]) => void,
     channellist_start: () => void,
     channellist_item: (item: ChanListItem) => void,
