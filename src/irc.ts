@@ -28,18 +28,23 @@ import * as detectCharset from 'chardet';
 import { Message, parseMessage } from './parse_message';
 import { IrcCapabilities } from './capabilities';
 import splitLongLines from './splitLines';
+import TypedEmitter from "typed-emitter";
+import { ClientEvents, CtcpEventIndex, JoinEventIndex, MessageEventIndex, PartEventIndex } from './events';
 
 const lineDelimiter = new RegExp('\r\n|\r|\n');
 const MIN_DELAY_MS = 33;
 
 export interface ChanData {
-    created: string;
+    created?: string;
     key: string;
     serverName: string;
-    users: {[nick: string]: string /* mode */},
+    /**
+     * nick => mode
+     */
+    users: Map<string, string>,
     mode: string;
-    topic: string;
-    topicBy: string;
+    topic?: string;
+    topicBy?: string;
 }
 
 export interface ChanListItem {
@@ -164,8 +169,10 @@ interface IrcSupported {
 
 }
 
+export type SaslErrors = "err_saslfail" | "err_sasltoolong" | "err_saslaborted" | "err_saslalready";
 
-export class Client extends EventEmitter {
+
+export class Client extends (EventEmitter as unknown as new () => TypedEmitter<ClientEvents>) {
     private sendingPromise = Promise.resolve();
     private lastSendTime = 0;
     private nickMod = 0;
@@ -182,9 +189,9 @@ export class Client extends EventEmitter {
      * Cached data
      */
     private whoisData = new Map<string, WhoisResponse>();
-    public chans: {[key: string]: ChanData} = {};
-    public prefixForMode: {[mode: string]: string} = {}; // o => @
-    public modeForPrefix: {[prefix: string]: string} = {}; // @ => o
+    public chans = new Map<string, ChanData>();
+    public readonly prefixForMode: {[mode: string]: string} = {}; // o => @
+    public readonly modeForPrefix: {[prefix: string]: string} = {}; // @ => o
 
     /**
      * These variables are used to build up state and should be discarded after use.
@@ -497,6 +504,9 @@ export class Client extends EventEmitter {
 
     private onNotice(message: Message) {
         this._casemap(message, 0);
+        if (!message.nick) {
+            return; // This requires a nick
+        }
         const from = message.nick;
         const to = message.args[0];
         const noticeText = message.args[1] || '';
@@ -521,6 +531,10 @@ export class Client extends EventEmitter {
         if (!channel) {
             return ;
         }
+        if (!message.nick) {
+            return; // This requires a nick
+        }
+        const from = message.nick;
         const modeList = message.args[1].split('');
         let adding = true;
         const modeArgs = message.args.slice(2);
@@ -536,19 +550,18 @@ export class Client extends EventEmitter {
             if (mode in this.prefixForMode) {
                 // channel user modes
                 const user = modeArgs.shift();
+                const userMode = user && channel.users.get(user);
                 if (adding) {
-                    if (user && channel.users[user] &&
-                        channel.users[user].indexOf(this.prefixForMode[mode]) === -1) {
-                        channel.users[user] += this.prefixForMode[mode];
+                    if (user && userMode?.indexOf(this.prefixForMode[mode]) === -1) {
+                        channel.users.set(user, userMode + this.prefixForMode[mode]);
                     }
-
-                    this.emit('+mode', message.args[0], message.nick, mode, user, message);
+                    this.emit('+mode', message.args[0], from, mode, user, message);
                 }
                 else {
-                    if (user && channel.users[user]) {
-                        channel.users[user] = channel.users[user].replace(this.prefixForMode[mode], '');
+                    if (user && userMode) {
+                        channel.users.set(user, userMode.replace(this.prefixForMode[mode], ''));
                     }
-                    this.emit('-mode', message.args[0], message.nick, mode, user, message);
+                    this.emit('-mode', message.args[0], from, mode, user, message);
                 }
             }
             else {
@@ -562,11 +575,11 @@ export class Client extends EventEmitter {
                 if (adding) {
                     if (channel.mode.indexOf(mode) === -1) {channel.mode += mode;}
 
-                    this.emit('+mode', message.args[0], message.nick, mode, modeArg, message);
+                    this.emit('+mode', message.args[0], from, mode, modeArg, message);
                 }
                 else {
                     channel.mode = channel.mode.replace(mode, '');
-                    this.emit('-mode', message.args[0], message.nick, mode, modeArg, message);
+                    this.emit('-mode', message.args[0], from, mode, modeArg, message);
                 }
             }
         });
@@ -587,13 +600,17 @@ export class Client extends EventEmitter {
 
         // finding what channels a user is in
         Object.entries(this.chans).forEach(([channame, nickChannel]) => {
-            if (message.nick && message.nick in nickChannel.users) {
-                nickChannel.users[message.args[0]] = nickChannel.users[message.nick];
-                delete nickChannel.users[message.nick];
+            const chanUser = message.nick && nickChannel.users.get(message.nick);
+            if (message.nick && chanUser) {
+                nickChannel.users.set(message.args[0], chanUser);
+                nickChannel.users.delete(message.nick);
                 channelsForNick.push(channame);
             }
         });
 
+        if (!message.nick) {
+            return; // This requires a nick
+        }
         // old nick, new nick, channels
         this.emit('nick', message.nick, message.args[0], channelsForNick, message);
     }
@@ -604,7 +621,9 @@ export class Client extends EventEmitter {
             return;
         }
         this.motd += `${data}\n`;
-        if (state === "end") {
+
+        // Checking this.motd, just to satify TS
+        if (this.motd && state === "end") {
             this.emit('motd', this.motd);
         }
     }
@@ -636,12 +655,12 @@ export class Client extends EventEmitter {
                     }
                 }
                 if (knownPrefixes.length > 0) {
-                    channel.users[match[2]] = knownPrefixes;
+                    channel.users.set(match[2], knownPrefixes);
                 }
                 else {
                     // recombine just in case this server allows weird chars in the nick.
                     // We know it isn't a mode char.
-                    channel.users[match[1] + match[2]] = '';
+                    channel.users.set(match[1] + match[2], '');
                 }
             }
         });
@@ -652,7 +671,6 @@ export class Client extends EventEmitter {
         const channel = this.chanData(message.args[1]);
         if (channel) {
             this.emit('names', message.args[1], channel.users);
-            this.emit('names' + message.args[1], channel.users);
             this._send('MODE', message.args[1]);
         }
     }
@@ -666,7 +684,9 @@ export class Client extends EventEmitter {
     }
 
     private onTopic(message: Message) {
-        // channel, topic, nick
+        if (!message.nick) {
+            return; // This requires a nick
+        }
         this._casemap(message, 0);
         this.emit('topic', message.args[0], message.args[1], message.nick, message);
 
@@ -680,7 +700,7 @@ export class Client extends EventEmitter {
     }
 
     private onReplyChannelList(message: Message) {
-        const chanListEntry = {
+        const chanListEntry: ChanListItem = {
             name: message.args[1],
             users: message.args[2],
             topic: message.args[3]
@@ -696,8 +716,11 @@ export class Client extends EventEmitter {
         const channel = this.chanData(message.args[1]);
         if (channel) {
             channel.topicBy = message.args[2];
-            // channel, topic, nick
-            this.emit('topic', message.args[1], channel.topic, channel.topicBy, message);
+            // We *should* know the topic at this point as servers usually send a topic first,
+            // but don't emit if we don't have it yet.
+            if (channel.topic) {
+                this.emit('topic', message.args[1], channel.topic, channel.topicBy, message);
+            }
         }
     }
 
@@ -720,31 +743,42 @@ export class Client extends EventEmitter {
     }
 
     private onJoin(message: Message) {
+        if (!message.nick) {
+            return; // This requires a nick
+        }
         this._casemap(message, 0);
-        // channel, who
         if (this.nick === message.nick) {
             this.chanData(message.args[0], true);
         }
         else {
             const channel = this.chanData(message.args[0]);
             if (message.nick && channel && channel.users) {
-                channel.users[message.nick] = '';
+                channel.users.set(message.nick, '');
             }
         }
         this.emit('join', message.args[0], message.nick, message);
-        this.emit('join' + message.args[0], message.nick, message);
+        this.emit(('join' + message.args[0]) as JoinEventIndex, message.nick, message);
         if (message.args[0] !== message.args[0].toLowerCase()) {
-            this.emit('join' + message.args[0].toLowerCase(), message.nick, message);
+            this.emit(
+                ('join' + message.args[0].toLowerCase()) as JoinEventIndex,
+                message.nick,
+                message
+            );
         }
     }
 
     private onPart(message: Message) {
+        if (!message.nick) {
+            return; // This requires a nick
+        }
         this._casemap(message, 0);
-        // channel, who, reason
         this.emit('part', message.args[0], message.nick, message.args[1], message);
-        this.emit('part' + message.args[0], message.nick, message.args[1], message);
+        this.emit(('part' + message.args[0]) as PartEventIndex, message.nick, message.args[1], message);
         if (message.args[0] !== message.args[0].toLowerCase()) {
-            this.emit('part' + message.args[0].toLowerCase(), message.nick, message.args[1], message);
+            this.emit(
+                (
+                    'part' + message.args[0].toLowerCase()
+                ) as PartEventIndex, message.nick, message.args[1], message);
         }
         if (this.nick === message.nick) {
             this.removeChanData(message.args[0]);
@@ -752,20 +786,17 @@ export class Client extends EventEmitter {
         else {
             const channel = this.chanData(message.args[0]);
             if (channel && channel.users && message.nick) {
-                delete channel.users[message.nick];
+                channel.users.delete(message.nick);
             }
         }
     }
 
     private onKick(message: Message) {
-        this._casemap(message, 0);
-        // channel, who, by, reason
-        this.emit('kick', message.args[0], message.args[1], message.nick, message.args[2], message);
-        this.emit('kick' + message.args[0], message.args[1], message.nick, message.args[2], message);
-        if (message.args[0] !== message.args[0].toLowerCase()) {
-            this.emit('kick' + message.args[0].toLowerCase(),
-                message.args[1], message.nick, message.args[2], message);
+        if (!message.nick) {
+            return; // This requires a nick
         }
+        this._casemap(message, 0);
+        this.emit('kick', message.args[0], message.args[1], message.nick, message.args[2], message);
 
         if (this.nick === message.args[1]) {
             this.removeChanData(message.args[0]);
@@ -773,7 +804,7 @@ export class Client extends EventEmitter {
         else {
             const channel = this.chanData(message.args[0]);
             if (channel && channel.users) {
-                delete channel.users[message.args[1]];
+                channel.users.delete(message.args[1]);
             }
         }
     }
@@ -791,6 +822,9 @@ export class Client extends EventEmitter {
     }
 
     private onPrivateMessage(message: Message) {
+        if (!message.nick) {
+            return; // This requires a nick
+        }
         this._casemap(message, 0);
         const from = message.nick;
         const to = message.args[0];
@@ -801,10 +835,15 @@ export class Client extends EventEmitter {
         }
         this.emit('message', from, to, msgText, message);
         if (this.supportedState.channel.types.indexOf(to.charAt(0)) !== -1) {
-            this.emit('message#', from, to, msgText, message);
-            this.emit('message' + to, from, msgText, message);
+            this.emit(
+                ('message' + to) as MessageEventIndex, from, msgText, message);
             if (to !== to.toLowerCase()) {
-                this.emit('message' + to.toLowerCase(), from, msgText, message);
+                this.emit(
+                    ('message' + to.toLowerCase()) as MessageEventIndex,
+                    from,
+                    msgText,
+                    message
+                );
             }
         }
         if (to.toUpperCase() === this.nick.toUpperCase()) {this.emit('pm', from, msgText, message);}
@@ -812,12 +851,18 @@ export class Client extends EventEmitter {
     }
 
     private onInvite(message: Message) {
+        if (!message.nick) {
+            return; // This requires a nick
+        }
         this._casemap(message, 1);
         const from = message.nick;
         this.emit('invite', message.args[1], from, message);
     }
 
     private onQuit(message: Message) {
+        if (!message.nick) {
+            return; // This requires a nick
+        }
         if (this.opt.debug) {util.log('QUIT: ' + message.prefix + ' ' + message.args.join(' '));}
         if (this.nick === message.nick) {
             // TODO handle?
@@ -965,14 +1010,15 @@ export class Client extends EventEmitter {
                 this._addWhoisData(message.args[1], 'account', message.args[2]);
                 return this._addWhoisData(message.args[1], 'accountinfo', message.args[3]);
             case 'rpl_endofwhois':
-                return void this.emit('whois', this._clearWhoisData(message.args[1]));
+                this.handleEndOfWhois(message.args[1]);
+                return;
             case 'rpl_liststart':
                 this.channelListState = [];
                 return void this.emit('channellist_start');
             case 'rpl_list':
                 return this.onReplyChannelList(message);
             case 'rpl_listend':
-                this.emit('channellist', this.channelListState);
+                this.emit('channellist', this.channelListState || []);
                 // Clear after use.
                 this.channelListState = undefined;
                 break;
@@ -1003,11 +1049,11 @@ export class Client extends EventEmitter {
             case 'AUTHENTICATE':
                 return this.onAuthenticate(message);
             case 'rpl_loggedin':
-                this.emit('sasl_loggedin', ...message.args);
+                this.emit('sasl_loggedin', message.args[0], message.args[1], message.args[2], message.args[3]);
                 this.loggedIn = true;
                 break;
             case 'rpl_loggedout':
-                this.emit('sasl_loggedout', ...message.args);
+                this.emit('sasl_loggedout', message.args[0], message.args[1], message.args[2]);
                 this.loggedIn = false;
                 break;
             case 'err_saslfail':
@@ -1040,6 +1086,13 @@ export class Client extends EventEmitter {
         }
     }
 
+    private handleEndOfWhois(nick: string) {
+        const whoisdata = this._clearWhoisData(nick);
+        if (whoisdata) {
+            this.emit('whois', whoisdata);
+        }
+    }
+
     private onNickConflict(maxLen?: number): string {
         if (typeof (this.nickMod) === 'undefined') {
             this.nickMod = 0;
@@ -1057,16 +1110,17 @@ export class Client extends EventEmitter {
 
     public chanData(name: string, create = false) {
         const key = name.toLowerCase();
-        if (create) {
-            this.chans[key] = this.chans[key] || {
+        const existing = this.chans.get(key);
+        if (create && !existing) {
+            this.chans.set(key, {
                 key: key,
                 serverName: name,
-                users: {},
+                users: new Map(),
                 mode: ''
-            };
+            });
         }
 
-        return this.chans[key];
+        return existing;
     }
 
     public removeChanData(name: string) {
@@ -1074,9 +1128,7 @@ export class Client extends EventEmitter {
         // Sometimes we can hit a race where we will get a PART about ourselves before we
         // have joined a channel fully and stored it in state.
         // Ensure that we have chanData before deleting
-        if (this.chans[key]) {
-            delete this.chans[key];
-        }
+        this.chans.delete(key);
     }
 
     private _connectionHandler() {
@@ -1110,7 +1162,7 @@ export class Client extends EventEmitter {
         if (typeof callback === 'function') {
             this.once('registered', callback);
         }
-        this.chans = {};
+        this.chans = new Map();
 
         // socket opts
         const connectionOpts: TcpSocketConnectOpts = {
@@ -1366,7 +1418,7 @@ export class Client extends EventEmitter {
 
     public join(channel: string, callback?: (...args: unknown[]) => void) {
         const channelName = channel.split(' ')[0];
-        this.once('join' + channelName, (...args) => {
+        this.once('join' + channelName as JoinEventIndex, (...args) => {
             // if join is successful, add this channel to opts.channels
             // so that it will be re-joined upon reconnect (as channels
             // specified in options are)
@@ -1388,7 +1440,7 @@ export class Client extends EventEmitter {
             message = undefined;
         }
         if (typeof (callback) === 'function') {
-            this.once('part' + channel, callback);
+            this.once('part' + channel as PartEventIndex, callback);
         }
 
         // remove this channel from this.opt.channels so we won't rejoin
@@ -1491,9 +1543,9 @@ export class Client extends EventEmitter {
     //  accept channelName as the first argument. An object with each key a
     //  user nick and each value '@' if they are a channel operator is passed
     //  as the second argument to the callback.
-    public names(channel: string, callback?: (callbackChannel: string, names: {[nick: string]: string}) => void) {
+    public names(channel: string, callback?: (callbackChannel: string, names: Map<string, string>) => void) {
         if (typeof callback === 'function') {
-            const callbackWrapper = (callbackChannel: string, names: {[nick: string]: string}) => {
+            const callbackWrapper = (callbackChannel: string, names: Map<string, string>) => {
                 if (callbackChannel === channel) {
                     return callback(callbackChannel, names);
                 }
@@ -1547,9 +1599,9 @@ export class Client extends EventEmitter {
         text = text.slice(0, text.indexOf('\u0001'));
         const parts = text.split(' ');
         this.emit('ctcp', from, to, text, type, message);
-        this.emit('ctcp-' + type, from, to, text, message);
+        this.emit(('ctcp-' + type) as CtcpEventIndex, from, to, text, message);
         if (type === 'privmsg' && text === 'VERSION') {
-            this.emit('ctcp-version', from, to, message);
+            this.emit('ctcp-version', from, to, text, message);
         }
         if (parts[0] === 'ACTION' && parts.length > 1) {
             this.emit('action', from, to, parts.slice(1).join(' '), message);
