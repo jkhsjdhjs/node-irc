@@ -14,14 +14,14 @@ jobs:
     - name: Use Node.js
       uses: actions/setup-node@v1
       with:
-        node-version: 14
+        node-version: 16
     - run: npm i
     - run: npm run lint
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node_version: [12, 14, 16]
+        node_version: [16, 18]
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node_version }}
@@ -30,13 +30,3 @@ jobs:
           node-version: ${{ matrix.node_version }}
       - run: npm i
       - run: npm run test
-  changelog:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-python@v2
-        with:
-          python-version: 3.6
-      - run: scripts/changelog-check.sh
