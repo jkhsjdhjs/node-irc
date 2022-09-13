@@ -51,5 +51,3 @@ jobs:
           node-version: ${{ matrix.node_version }}
       - run: npm i
       - run: npm run test:integration
-        env:
-          IRC_TEST_ADDRESS: ircd
