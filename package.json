@@ -7,7 +7,8 @@
     "prepare": "npm run build",
     "build": "tsc --project tsconfig.json",
     "lint": "eslint -c .eslintrc --max-warnings 0 'src/**/*.ts'",
-    "test": "tap ./test/test-*.js"
+    "test": "tap ./test/test-*.js",
+    "test:integration": "jest"
   },
   "contributors": [
     "node-irc contributors"
