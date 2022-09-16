@@ -43,7 +43,7 @@ export interface ChanData {
      */
     users: Map<string, string>,
     mode: string;
-    modeParams: {[mode: string]: string[]}
+    modeParams: Map<string, string[]>,
     topic?: string;
     topicBy?: string;
 }
@@ -561,29 +561,28 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         const modeArgs = args;
 
         const handleChannelMode = function(mode: string, param?: string, modeIsList = false) {
+            const modeParam = channel.modeParams.get(mode);
             if (adding) {
                 if (!channel.mode.includes(mode)) {
                     channel.mode += mode;
                 }
                 if (param === undefined) {
-                    channel.modeParams[mode] = [];
+                    channel.modeParams.set(mode, []);
                 }
                 else if (modeIsList) {
-                    channel.modeParams[mode] = channel.modeParams[mode] ?
-                        channel.modeParams[mode].concat([param]) : [param];
+                    channel.modeParams.set(mode, modeParam?.concat([param]) || [param]);
                 }
                 else {
-                    channel.modeParams[mode] = [param];
+                    channel.modeParams.set(mode, [param]);
                 }
             }
-            else {
+            else if (modeParam) {
                 if (modeIsList) {
-                    channel.modeParams[mode] = channel.modeParams[mode]
-                        .filter(function(v) { return v !== param; });
+                    channel.modeParams.set(mode, modeParam.filter(m => m !== mode));
                 }
-                if (!modeIsList || channel.modeParams[mode].length === 0) {
+                else if (!modeIsList) {
                     channel.mode = channel.mode.replace(mode, '');
-                    delete channel.modeParams[mode];
+                    channel.modeParams.delete(mode);
                 }
             }
         };
@@ -1170,7 +1169,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
                 serverName: name,
                 users: new Map(),
                 mode: '',
-                modeParams: {},
+                modeParams: new Map(),
             });
         }
 
