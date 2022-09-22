@@ -43,6 +43,7 @@ export interface ChanData {
      */
     users: Map<string, string>,
     mode: string;
+    modeParams: Map<string, string[]>,
     topic?: string;
     topicBy?: string;
 }
@@ -152,7 +153,26 @@ interface IrcSupported {
         idlength: {[key: string]: string};
         length: number;
         limit: {[key: string]: number};
-        modes: { a: string; b: string; c: string; d: string;},
+        // https://www.irc.info/articles/rpl_isupport
+        modes: {
+            /**
+             * Always take a parameter when specified by the server.
+             * May have a parameter when specificed by the client.
+             */
+            a: string;
+            /**
+             * Alwyas take a parameter.
+             */
+            b: string;
+            /**
+             * Take a parameter when set, absent when removed.
+             */
+            c: string;
+            /**
+             * Never take a parameter.
+             */
+            d: string;
+        },
         types: string;
     };
     maxlist: {[key: string]: number};
@@ -525,19 +545,49 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
 
     private onMode(message: Message) {
         this._casemap(message, 0);
-        if (this.opt.debug) {util.log('MODE: ' + message.args[0] + ' sets mode: ' + message.args[1]);}
-
-        const channel = this.chanData(message.args[0]);
+        const args = [...message.args];
+        const chanName = args.shift();
+        if (this.opt.debug) {util.log(`MODE: ${chanName} sets mode: ${args}`);}
+        const channel = chanName && this.chanData(chanName);
+        const from = message.nick;
         if (!channel) {
-            return ;
+            return; // We don't know this channel.
         }
-        if (!message.nick) {
+        if (!from) {
             return; // This requires a nick
         }
-        const from = message.nick;
-        const modeList = message.args[1].split('');
+        const modeList = args.shift()?.split('') || [];
         let adding = true;
-        const modeArgs = message.args.slice(2);
+        const modeArgs = args;
+
+        const handleChannelMode = function(mode: string, param?: string, modeIsList = false) {
+            const modeParam = channel.modeParams.get(mode);
+            if (adding) {
+                if (!channel.mode.includes(mode)) {
+                    channel.mode += mode;
+                }
+                if (param === undefined) {
+                    channel.modeParams.set(mode, []);
+                }
+                else if (modeIsList) {
+                    channel.modeParams.set(mode, modeParam?.concat([param]) || [param]);
+                }
+                else {
+                    channel.modeParams.set(mode, [param]);
+                }
+            }
+            else if (modeParam) {
+                if (modeIsList) {
+                    channel.modeParams.set(mode, modeParam.filter(m => m !== mode));
+                }
+                else if (!modeIsList) {
+                    channel.mode = channel.mode.replace(mode, '');
+                    channel.modeParams.delete(mode);
+                }
+            }
+        };
+
+
         modeList.forEach((mode) => {
             if (mode === '+') {
                 adding = true;
@@ -547,45 +597,50 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
                 adding = false;
                 return;
             }
+            const eventName = (adding ? '+' : '-') + 'mode' as '+mode'|'-mode';
+            const supported = this.supported.channel.modes;
             if (mode in this.prefixForMode) {
                 // channel user modes
                 const user = modeArgs.shift();
-                const userMode = user && channel.users.get(user);
-                if (adding) {
-                    if (user && userMode?.indexOf(this.prefixForMode[mode]) === -1) {
-                        channel.users.set(user, userMode + this.prefixForMode[mode]);
+                const currUserMode = user && channel.users.get(user);
+                const prefix = this.prefixForMode[mode];
+                if (user && currUserMode !== undefined) {
+                    if (adding && !currUserMode?.includes(prefix)) {
+                        channel.users.set(user, currUserMode + prefix);
                     }
-                    this.emit('+mode', message.args[0], from, mode, user, message);
-                }
-                else {
-                    if (user && userMode) {
-                        channel.users.set(user, userMode.replace(this.prefixForMode[mode], ''));
+                    else if (currUserMode?.includes(prefix)) {
+                        channel.users.set(user, currUserMode.replace(prefix, ''));
                     }
-                    this.emit('-mode', message.args[0], from, mode, user, message);
                 }
+                this.emit(eventName, chanName, from, mode, user, message);
             }
-            else {
-                let modeArg;
-                // channel modes
-                if (mode.match(/^[bkl]$/)) {
-                    modeArg = modeArgs.shift();
-                    if (!modeArg || modeArg.length === 0) {modeArg = undefined;}
-                }
-                // TODO - deal nicely with channel modes that take args
-                if (adding) {
-                    if (channel.mode.indexOf(mode) === -1) {channel.mode += mode;}
-
-                    this.emit('+mode', message.args[0], from, mode, modeArg, message);
-                }
-                else {
-                    channel.mode = channel.mode.replace(mode, '');
-                    this.emit('-mode', message.args[0], from, mode, modeArg, message);
-                }
+            // channel modes
+            else if (supported.a.includes(mode)) {
+                const modeArg = modeArgs.shift();
+                handleChannelMode(mode, modeArg, true);
+                this.emit(eventName, chanName, from, mode, modeArg, message);
+            }
+            else if (supported.b.includes(mode)) {
+                const modeArg = modeArgs.shift();
+                handleChannelMode(mode, modeArg);
+                this.emit(eventName, chanName, from, mode, modeArg, message);
+            }
+            else if (supported.c.includes(mode)) {
+                const modeArg = adding ? modeArgs.shift() : undefined;
+                handleChannelMode(mode, modeArg);
+                this.emit(eventName, chanName, from, mode, modeArg, message);
+            }
+            else if (supported.d.includes(mode)) {
+                handleChannelMode(mode, undefined);
+                this.emit(eventName, chanName, from, mode, undefined, message);
             }
         });
     }
 
     private onNick(message: Message) {
+        if (!message.nick) {
+            return; // This requires a nick
+        }
         if (message.nick === this.nick) {
             // the user just changed their own nick
             this.currentNick = message.args[0];
@@ -608,9 +663,6 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
             }
         });
 
-        if (!message.nick) {
-            return; // This requires a nick
-        }
         // old nick, new nick, channels
         this.emit('nick', message.nick, message.args[0], channelsForNick, message);
     }
@@ -1116,7 +1168,8 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
                 key: key,
                 serverName: name,
                 users: new Map(),
-                mode: ''
+                mode: '',
+                modeParams: new Map(),
             });
         }
 
