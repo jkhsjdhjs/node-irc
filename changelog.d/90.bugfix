@@ -1,1 +1,0 @@
-Prevent connection immediately terminating on expired certificate when allowed by config. Contributed by @f0x52.
