@@ -30,3 +30,24 @@ jobs:
           node-version: ${{ matrix.node_version }}
       - run: npm i
       - run: npm run test
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      ircd:
+        image: inspircd/inspircd-docker
+        env:
+          # Don't check domain against blacklists
+          INSP_ENABLE_DNSBL: no
+        ports:
+          - 6667:6667
+    strategy:
+      matrix:
+        node_version: [16, 18]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js ${{ matrix.node_version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node_version }}
+      - run: npm i
+      - run: npm run test:integration

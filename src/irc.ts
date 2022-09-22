@@ -18,7 +18,7 @@
     along with this library.  If not, see <http://www.gnu.org/licenses/>.
 */
 import * as dns from 'dns';
-import { Socket, createConnection, TcpSocketConnectOpts } from 'net';
+import { Socket, createConnection, TcpNetConnectOpts } from 'net';
 import * as tls from 'tls';
 import * as util from 'util';
 import isValidUTF8 from 'utf-8-validate';
@@ -106,6 +106,7 @@ export interface IrcClientOpts {
         host?: string,
     };
     nickMod?: number;
+    connectionTimeout?: number;
 }
 
 /**
@@ -1218,10 +1219,11 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         this.chans = new Map();
 
         // socket opts
-        const connectionOpts: TcpSocketConnectOpts = {
+        const connectionOpts: TcpNetConnectOpts = {
             host: this.server,
             port: this.opt.port,
             family: this.opt.family,
+            timeout: this.opt.connectionTimeout,
         };
 
         // local address to bind to
