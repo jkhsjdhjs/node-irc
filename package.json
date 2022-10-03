@@ -4,7 +4,7 @@
   "version": "1.5.0",
   "author": "Matrix.org (original fork from Martyn Smith <martyn@dollyfish.net.nz>)",
   "scripts": {
-    "prepare": "npm run build",
+    "prepare": "yarn run build",
     "build": "tsc --project tsconfig.json",
     "lint": "eslint -c .eslintrc --max-warnings 0 'src/**/*.ts'",
     "test": "tap ./test/test-*.js",
