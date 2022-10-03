@@ -1,3 +1,12 @@
+1.5.0 (2022-10-03)
+==================
+
+Internal Changes
+----------------
+
+- Add support for testing against an actual IRCD. ([\#94](https://github.com/matrix-org/node-irc/issues/94))
+
+
 1.4.0 (2022-09-22)
 ==================
 
