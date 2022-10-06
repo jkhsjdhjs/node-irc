@@ -54,7 +54,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt install inspircd
-          sudo cp node-irc/.github/support/inspircd.conf /etc/inspircd/inspircd.conf
+          sudo cp .github/support/inspircd.conf /etc/inspircd/inspircd.conf
           sudo service inspircd start
       - run: yarn
       - run: yarn test:integration
