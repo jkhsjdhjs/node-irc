@@ -31,7 +31,7 @@ jobs:
       - run: yarn
       - run: yarn test
   integration:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         node_version: [16, 18]
@@ -43,7 +43,7 @@ jobs:
           sudo apt update
           sudo apt install inspircd
           sudo cp .github/support/inspircd.conf /etc/inspircd/inspircd.conf
-          sudo service inspircd start
+          inspircd
       - name: Use Node.js ${{ matrix.node_version }}
         uses: actions/setup-node@v1
         with:
