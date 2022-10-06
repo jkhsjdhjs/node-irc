@@ -43,11 +43,18 @@ jobs:
     strategy:
       matrix:
         node_version: [16, 18]
-    steps:
+    steps:      
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node_version }}
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node_version }}
+      # Setup the IRCD
+      - name: Setup inspircd
+        run: |
+          sudo apt update
+          sudo apt install inspircd
+          sudo cp node-irc/.github/support/inspircd.conf /etc/inspircd/inspircd.conf
+          sudo service inspircd start
       - run: yarn
       - run: yarn test:integration
