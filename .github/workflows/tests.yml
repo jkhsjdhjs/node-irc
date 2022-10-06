@@ -43,7 +43,7 @@ jobs:
           sudo apt update
           sudo apt install inspircd
           sudo cp .github/support/inspircd.conf /etc/inspircd/inspircd.conf
-          sudo chown irc:irc /etc/inspircd/inspircd.conf
+          sudo ls -l /etc/inspircd/
           sudo inspircd --runasroot --nopid
       - name: Use Node.js ${{ matrix.node_version }}
         uses: actions/setup-node@v1
