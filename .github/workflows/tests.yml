@@ -31,16 +31,12 @@ jobs:
       - run: yarn
       - run: yarn test
   integration:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         node_version: [16, 18]
     steps:      
       - uses: actions/checkout@v2
-      - name: Use Node.js ${{ matrix.node_version }}
-        uses: actions/setup-node@v1
-        with:
-          node-version: ${{ matrix.node_version }}
       # Setup the IRCD
       - name: Setup inspircd
         run: |
@@ -48,5 +44,9 @@ jobs:
           sudo apt install inspircd
           sudo cp .github/support/inspircd.conf /etc/inspircd/inspircd.conf
           sudo service inspircd start
+      - name: Use Node.js ${{ matrix.node_version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node_version }}
       - run: yarn
       - run: yarn test:integration
