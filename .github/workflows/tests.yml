@@ -37,8 +37,7 @@ jobs:
         node_version: [16, 18]
     steps:
       - uses: actions/checkout@v2
-      # Setup the IRCD
-      - name: Setup inspircd
+      - name: Set up inspircd
         run: |
           sudo apt update
           sudo apt install inspircd
