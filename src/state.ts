@@ -97,6 +97,7 @@ export interface ChanData {
 
 export interface IrcClientState {
     loggedIn: boolean;
+    registered: boolean;
     /**
     * This will either be the requested nick or the actual nickname.
     */
@@ -111,10 +112,12 @@ export interface IrcClientState {
    prefixForMode: {[mode: string]: string}; // o => @
    maxLineLength: number;
    lastSendTime: number;
+   flush?: () => void;
 }
 
 export class IrcInMemoryState implements IrcClientState {
     public loggedIn = false;
+    public registered = false;
     public currentNick = '';
     public whoisData = new Map<string, WhoisResponse>();
     public nickMod = 0;

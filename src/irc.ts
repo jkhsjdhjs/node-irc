@@ -312,6 +312,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         this.state.hostMask = welcomeStringWords[welcomeStringWords.length - 1];
         this._updateMaxLineLength();
         this.emit('registered');
+        this.state.registered = true;
         this.whois(this.state.currentNick, (args) => {
             if (!args) {
                 // TODO: We can't find our own nick, so do nothing here.
@@ -420,6 +421,8 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
                     break;
             }
         });
+        // We've probably mutated the supported state, so flush the state
+        this.state.flush?.();
     }
 
     private onErrNicknameInUse(message: Message) {
@@ -567,6 +570,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
                 this.emit(eventName, chanName, from, mode, undefined, message);
             }
         });
+        this.state.flush?.();
     }
 
     private onNick(message: Message) {
@@ -594,6 +598,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
                 channelsForNick.push(channame);
             }
         });
+        this.state.flush?.();
 
         // old nick, new nick, channels
         this.emit('nick', message.nick, message.args[0], channelsForNick, message);
@@ -802,6 +807,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
                 killChannels.push(channame);
             }
         }
+        this.state.flush?.();
         this.emit('kill', nick, message.args[1], killChannels, message);
     }
 
@@ -863,6 +869,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
                 quitChannels.push(channame);
             }
         }
+        this.state.flush?.();
 
         // who, reason, channels
         this.emit('quit', message.nick, message.args[0], quitChannels, message);
@@ -1104,6 +1111,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
                 modeParams: new Map(),
             });
         }
+        this.state.flush?.();
 
         return existing;
     }
@@ -1114,6 +1122,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         // have joined a channel fully and stored it in state.
         // Ensure that we have chanData before deleting
         this.state.chans.delete(key);
+        this.state.flush?.();
     }
 
     private _connectionHandler() {
@@ -1125,6 +1134,8 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
             this._send('PASS', this.opt.password);
         }
         if (this.opt.debug) {util.log('Sending irc NICK/USER');}
+        // New connection, clear chan list.
+        this.state.chans.clear();
         // Request capabilities.
         // https://ircv3.net/specs/extensions/capability-negotiation.html
         this._send('CAP LS', '302');
@@ -1147,7 +1158,6 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         if (typeof callback === 'function') {
             this.once('registered', callback);
         }
-        this.state.chans = new Map();
 
         // socket opts
         const connectionOpts: TcpNetConnectOpts = {
@@ -1266,10 +1276,15 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
             throw Error('What!');
         }
 
-        //this.conn.once('connected', () => {
-        //    console.log('Got connected!');
+        if (!this.state.registered) {
+            //this.conn.once('connected', () => {
+            //    console.log('Got connected!');
             this._connectionHandler();
-        //});
+            //});
+        }
+        else {
+            this.emit('registered');
+        }
 
         this.requestedDisconnect = false;
         this.conn.setTimeout(1000 * 180);
