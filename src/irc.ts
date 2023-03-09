@@ -1276,6 +1276,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
             throw Error('What!');
         }
 
+
         if (!this.state.registered) {
             //this.conn.once('connected', () => {
             //    console.log('Got connected!');
