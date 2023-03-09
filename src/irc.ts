@@ -125,12 +125,14 @@ export type IrcConnectionEventsMap = {
     end: () => void,
     close: () => void,
     timeout: () => void,
+    connect: () => void,
     connected: () => void,
 }
 
 export type IrcConnectionEventEmitter = TypedEmitter<IrcConnectionEventsMap>;
 
 export interface IrcConnection extends IrcConnectionEventEmitter {
+    connecting: boolean;
     setTimeout(arg0: number): unknown;
     destroy(): unknown;
     write(data: string): void;
@@ -1276,20 +1278,25 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         }
         else if (!this.conn) {
             // TODO: Needs manual assertion as it's not convinced.
-            this.conn = createConnection(connectionOpts, () => {
-                this.conn?.emit('connected');
-            }) as IrcConnection;
+            this.conn = createConnection(connectionOpts) as IrcConnection;
         }
 
 
-        if (!this.state.registered) {
-            this.conn.once('connected', () => {
-                console.log('Got connected!');
-                this._connectionHandler();
-            });
+        if (this.state.registered) {
+            // The connection was previously registered, so just emit this.
+            this.emit('registered');
         }
         else {
-            this.emit('registered');
+            if (this.conn.connecting) {
+                this.conn.once('connect', () => {
+                    console.log('Got connected!');
+                    this._connectionHandler();
+                });
+            }
+            else {
+                // Already connected
+                this._connectionHandler();
+            }
         }
 
         this.requestedDisconnect = false;
