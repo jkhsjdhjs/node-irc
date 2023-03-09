@@ -126,7 +126,6 @@ export type IrcConnectionEventsMap = {
     close: () => void,
     timeout: () => void,
     connect: () => void,
-    connected: () => void,
 }
 
 export type IrcConnectionEventEmitter = TypedEmitter<IrcConnectionEventsMap>;
@@ -1271,7 +1270,6 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
                 if (!this.opt.encoding) {
                     tlscon.setEncoding('utf-8');
                 }
-                this.conn?.emit('connected');
             });
             // TODO: Needs manual assertion as it's not convinced.
             this.conn = tlscon as IrcConnection;
