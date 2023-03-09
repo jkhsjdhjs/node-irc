@@ -147,6 +147,11 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
     private requestedDisconnect = false;
 
     /**
+     * Is the socket in use by this instance created by us, or passed in.
+     */
+    private isOurSocket = false;
+
+    /**
      * These variables are used to build up state and should be discarded after use.
      */
     private motd?: string = "";
@@ -197,6 +202,8 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         else {
             this.state = existingState;
         }
+
+        this.isOurSocket = !conn;
 
         // TODO: Is this safe?
         this.state.currentNick = requestedNick;
@@ -1210,11 +1217,13 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         }
 
         // destroy old socket before allocating a new one
-        // TODO: Fixme
-        // if (this.conn) {this.conn.destroy();}
+        if (this.isOurSocket && this.conn) {
+            this.conn.destroy();
+            this.conn = undefined;
+        }
 
         // try to connect to the server
-        if (this.opt.secure) {
+        if (this.opt.secure && !this.conn) {
             let secureOpts: tls.ConnectionOptions = {
                 ...connectionOpts,
                 rejectUnauthorized: !(this.opt.selfSigned || this.opt.certExpired),
@@ -1272,16 +1281,12 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
             }) as IrcConnection;
         }
 
-        if (!this.conn) {
-            throw Error('What!');
-        }
-
 
         if (!this.state.registered) {
-            //this.conn.once('connected', () => {
-            //    console.log('Got connected!');
-            this._connectionHandler();
-            //});
+            this.conn.once('connected', () => {
+                console.log('Got connected!');
+                this._connectionHandler();
+            });
         }
         else {
             this.emit('registered');
