@@ -155,7 +155,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
     /**
      * These variables are used to build up state and should be discarded after use.
      */
-    private motd?: string = "";
+    private motd? = "";
     private channelListState?: ChanListItem[];
 
     private readonly state: IrcClientState;
@@ -180,6 +180,10 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
 
     get maxLineLength(): number {
         return this.state.maxLineLength;
+    }
+
+    get hostMask() {
+        return this.state.hostMask;
     }
 
     /**
@@ -921,7 +925,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         //
         // Check to see if we are NOT logged in, and if so, use a "random" string
         // as the next nick.
-        if (this.state.hostMask !== '') { // hostMask set on rpl_welcome
+        if (this.hostMask !== '') { // hostMask set on rpl_welcome
             this.emit('error', message);
             return;
         }
@@ -1154,6 +1158,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         this.emit('connect');
     }
 
+    // TODO: Perhaps split out bind listeners / setup from creating connections if we passed in a connection.
     public connect(retryCountOrCallBack?: number|(() => void), callback?: () => void) {
         let retryCount: number;
         if (typeof retryCountOrCallBack === 'function') {
@@ -1297,11 +1302,20 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
             }
         }
 
+        this.bindListeners(retryCount);
+    }
+
+    private bindListeners(reconnectRetryCount: number) {
+        if (!this.conn) {
+            throw Error('Connection is not ready, cannot bind listeners');
+        }
+
         this.requestedDisconnect = false;
         this.conn.setTimeout(1000 * 180);
 
         let buffer = Buffer.alloc(0);
 
+        // TODO: Move this to it's own func
         this.conn.on('data', (chunk: string|Buffer) => {
             if (typeof chunk === 'string') {
                 chunk = Buffer.from(chunk);
@@ -1342,13 +1356,13 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
             if (this.opt.debug) {
                 util.log('Connection got "close" event');
             }
-            this.reconnect(retryCount);
+            this.reconnect(reconnectRetryCount);
         });
         this.conn.addListener('timeout', () => {
             if (this.opt.debug) {
                 util.log('Connection got "timeout" event');
             }
-            this.reconnect(retryCount);
+            this.reconnect(reconnectRetryCount);
         });
         this.conn.addListener('error', (exception) => {
             if (this.opt.debug) {
@@ -1680,7 +1694,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
     private _updateMaxLineLength(): void {
         // 497 = 510 - (":" + "!" + " PRIVMSG " + " :").length;
         // target is determined in _speak() and subtracted there
-        this.state.maxLineLength = 497 - this.nick.length - this.state.hostMask.length;
+        this.state.maxLineLength = 497 - this.nick.length - this.hostMask.length;
     }
 
     // Checks the arg at the given index for a channel. If one exists, casemap it
