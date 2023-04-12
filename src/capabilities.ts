@@ -1,4 +1,6 @@
+import EventEmitter from "events";
 import { Message } from "./parse_message";
+import TypedEmitter from "typed-emitter";
 
 class Capabilities {
     constructor(
@@ -30,26 +32,26 @@ class Capabilities {
     }
 }
 
+type IrcCapabilitiesEvents = {
+    serverCapabilitesReady: () => void,
+    userCapabilitesReady: () => void,
+}
+
 /**
  * A helper class to handle capabilities sent by the IRCd.
  */
-export class IrcCapabilities {
+export class IrcCapabilities extends (EventEmitter as unknown as new () => TypedEmitter<IrcCapabilitiesEvents>) {
     private serverCapabilites = new Capabilities();
     private userCapabilites = new Capabilities();
-    private onCapsList?: () => void;
-    private onCapsConfirmed?: () => void;
 
     constructor(data?: ReturnType<IrcCapabilities["serialise"]>) {
+        super();
         data?.serverCapabilites.forEach(v => this.serverCapabilites.caps.add(v));
         data?.serverCapabilitesSasl.forEach(v => this.serverCapabilites.saslTypes.add(v));
         data?.userCapabilites.forEach(v => this.serverCapabilites.caps.add(v));
         data?.userCapabilitesSasl.forEach(v => this.userCapabilites.saslTypes.add(v));
     }
 
-    public bindToOnCaps(onCapsList: () => void, onCapsConfirmed: () => void) {
-        this.onCapsList = onCapsList;
-        this.onCapsConfirmed = onCapsConfirmed;
-    }
 
     public serialise() {
         return {
@@ -105,7 +107,7 @@ export class IrcCapabilities {
 
             if (this.serverCapabilites.ready) {
                 // We now need to request user caps
-                this.onCapsList?.();
+                this.emit('serverCapabilitesReady');
             }
         }
         // The target might be * or the nickname, for now just accept either.
@@ -113,7 +115,7 @@ export class IrcCapabilities {
             this.userCapabilites.extend(parts);
 
             if (this.userCapabilites.ready) {
-                this.onCapsConfirmed?.();
+                this.emit('userCapabilitesReady');
             }
         }
     }

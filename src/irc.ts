@@ -2,7 +2,7 @@
     irc.js - Node JS IRC client library
 
     Copyright 2010 Martyn Smith
-    Copyright 2020-2021 The Matrix.org Foundation C.I.C
+    Copyright 2020-2023 The Matrix.org Foundation C.I.C
 
     This library is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -131,6 +131,11 @@ export type IrcConnectionEventsMap = {
 export type IrcConnectionEventEmitter = TypedEmitter<IrcConnectionEventsMap>;
 
 export interface IrcConnection extends IrcConnectionEventEmitter {
+    /**
+     * These go unused,
+     */
+    rawListeners: any;
+    listeners: any;
     connecting: boolean;
     setTimeout(arg0: number): unknown;
     destroy(): unknown;
@@ -157,6 +162,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
      */
     private motd? = "";
     private channelListState?: ChanListItem[];
+    private buffer = Buffer.alloc(0);
 
     private readonly state: IrcClientState;
 
@@ -210,13 +216,21 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
 
         this.isOurSocket = !conn;
 
-        // TODO: Is this safe?
-        this.state.currentNick = requestedNick;
+        if (!this.state.currentNick) {
+            this.state.currentNick = requestedNick;
+        } // Otherwise, we already have a nick.
+
         if (opt.channelPrefixes) {
             this.state.supportedState.channel.types = opt.channelPrefixes;
         }
-
-        this.state.capabilities.bindToOnCaps(this.onCapsList.bind(this), this.onCapsConfirmed.bind(this));
+        this.state.capabilities.once('serverCapabilitesReady', () => {
+            this.onCapsList();
+            this.state.flush?.();
+        })
+        this.state.capabilities.once('userCapabilitesReady', () => {
+            this.onCapsConfirmed();
+            this.state.flush?.();
+        })
         /**
          * This promise is used to block new sends until the previous one completes.
          */
@@ -1158,7 +1172,6 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         this.emit('connect');
     }
 
-    // TODO: Perhaps split out bind listeners / setup from creating connections if we passed in a connection.
     public connect(retryCountOrCallBack?: number|(() => void), callback?: () => void) {
         let retryCount: number;
         if (typeof retryCountOrCallBack === 'function') {
@@ -1276,12 +1289,10 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
                     tlscon.setEncoding('utf-8');
                 }
             });
-            // TODO: Needs manual assertion as it's not convinced.
-            this.conn = tlscon as IrcConnection;
+            this.conn = tlscon;
         }
         else if (!this.conn) {
-            // TODO: Needs manual assertion as it's not convinced.
-            this.conn = createConnection(connectionOpts) as IrcConnection;
+            this.conn = createConnection(connectionOpts);
         }
 
 
@@ -1292,7 +1303,6 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         else {
             if (this.conn.connecting) {
                 this.conn.once('connect', () => {
-                    console.log('Got connected!');
                     this._connectionHandler();
                 });
             }
@@ -1305,6 +1315,37 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         this.bindListeners(retryCount);
     }
 
+    private onData(chunk: string|Buffer) {
+        if (typeof chunk === 'string') {
+            chunk = Buffer.from(chunk);
+        }
+        this.buffer = Buffer.concat([this.buffer, chunk]);
+
+        const lines = this.convertEncoding(this.buffer).toString().split(lineDelimiter);
+
+        if (lines.pop()) {
+            // if buffer is not ended with \r\n, there's more chunks.
+            return;
+        }
+        // else, clear the buffer
+        this.buffer = Buffer.alloc(0);
+
+        lines.forEach((line) => {
+            if (!line.length) {
+                return;
+            }
+            const message = parseMessage(line, this.opt.stripColors);
+            try {
+                this.emit('raw', message);
+            }
+            catch (err) {
+                if (!this.requestedDisconnect) {
+                    throw err;
+                }
+            }
+        });
+    }
+
     private bindListeners(reconnectRetryCount: number) {
         if (!this.conn) {
             throw Error('Connection is not ready, cannot bind listeners');
@@ -1313,55 +1354,28 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         this.requestedDisconnect = false;
         this.conn.setTimeout(1000 * 180);
 
-        let buffer = Buffer.alloc(0);
-
-        // TODO: Move this to it's own func
-        this.conn.on('data', (chunk: string|Buffer) => {
-            if (typeof chunk === 'string') {
-                chunk = Buffer.from(chunk);
-            }
-            buffer = Buffer.concat([buffer, chunk]);
-
-            const lines = this.convertEncoding(buffer).toString().split(lineDelimiter);
-
-            if (lines.pop()) {
-                // if buffer is not ended with \r\n, there's more chunks.
-                return;
-            }
-            // else, initialize the buffer.
-            buffer = Buffer.alloc(0);
-
-
-            lines.forEach((line) => {
-                if (!line.length) {
-                    return;
-                }
-                const message = parseMessage(line, this.opt.stripColors);
-                try {
-                    this.emit('raw', message);
-                }
-                catch (err) {
-                    if (!this.requestedDisconnect) {
-                        throw err;
-                    }
-                }
-            });
-        });
+        this.conn.on('data', this.onData.bind(this));
         this.conn.addListener('end', () => {
             if (this.opt.debug) {
                 util.log('Connection got "end" event');
             }
+            // Ensure we reset the state.
+            this.state.registered = false;
         });
         this.conn.addListener('close', () => {
             if (this.opt.debug) {
                 util.log('Connection got "close" event');
             }
+            // Ensure we reset the state.
+            this.state.registered = false;
             this.reconnect(reconnectRetryCount);
         });
         this.conn.addListener('timeout', () => {
             if (this.opt.debug) {
                 util.log('Connection got "timeout" event');
             }
+            // Ensure we reset the state.
+            this.state.registered = false;
             this.reconnect(reconnectRetryCount);
         });
         this.conn.addListener('error', (exception) => {
