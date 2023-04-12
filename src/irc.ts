@@ -131,11 +131,6 @@ export type IrcConnectionEventsMap = {
 export type IrcConnectionEventEmitter = TypedEmitter<IrcConnectionEventsMap>;
 
 export interface IrcConnection extends IrcConnectionEventEmitter {
-    /**
-     * These go unused,
-     */
-    rawListeners: any;
-    listeners: any;
     connecting: boolean;
     setTimeout(arg0: number): unknown;
     destroy(): unknown;
@@ -1289,10 +1284,14 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
                     tlscon.setEncoding('utf-8');
                 }
             });
-            this.conn = tlscon;
+            // We assert this explicitly because:
+            // - The socket connections define a listeners/rawListeners which we do not use.
+            // - Without defining those on IrcConnection, Socket does not overlap with `IrcConnection`
+            // - Therefore, we assert that this is a IrcConnection.
+            this.conn = tlscon as IrcConnection;
         }
         else if (!this.conn) {
-            this.conn = createConnection(connectionOpts);
+            this.conn = createConnection(connectionOpts) as IrcConnection;
         }
 
 
