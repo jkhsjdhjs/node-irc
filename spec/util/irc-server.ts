@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { Client, ClientEvents } from '../../lib';
+import { Client, ClientEvents } from '../../src';
 import { describe, beforeEach, afterEach } from '@jest/globals';
 
 const DEFAULT_PORT = parseInt(process.env.IRC_TEST_PORT ?? '6667', 10);
@@ -48,7 +48,7 @@ export class IrcServer {
     }
 
     public readonly clients: TestClient[] = [];
-    constructor(private readonly address = DEFAULT_ADDRESS, private readonly port = DEFAULT_PORT) { }
+    constructor(public readonly address = DEFAULT_ADDRESS, public readonly port = DEFAULT_PORT) { }
 
     async setUp(clients = ['speaker', 'listener']) {
         const connections: Promise<void>[] = [];
