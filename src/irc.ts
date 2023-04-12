@@ -1386,6 +1386,11 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
     }
 
     private reconnect(retryCount: number) {
+        if (!this.isOurSocket) {
+            // Cannot reconnect if the socket is not ours.
+            this.emit('abort', 0);
+            return;
+        }
         if (this.requestedDisconnect) {return;}
         if (this.opt.debug) {util.log('Disconnected: reconnecting');}
         if (this.opt.retryCount !== null && retryCount >= this.opt.retryCount) {
@@ -1402,6 +1407,21 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         setTimeout(() => {
             this.connect(retryCount + 1);
         }, this.opt.retryDelay);
+    }
+
+    /**
+     * Destory the client. If the socket was passed in via the constructor, this does NOT disconnect but instead
+     * unmaps the client instance from the socket. The state will also need to be cleared up seperately.
+     */
+    public destroy() {
+        (
+            ['data', 'end', 'close', 'timeout', 'error'] as (keyof IrcConnectionEventsMap)[]
+        ).forEach(evtType => {
+            this.conn?.removeAllListeners(evtType);
+        });
+        if (this.isOurSocket) {
+            this.disconnect();
+        }
     }
 
     public disconnect(messageOrCallback?: string|(() => void), callback?: () => void) {
