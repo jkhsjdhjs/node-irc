@@ -1,4 +1,4 @@
-import { test, afterEach, expect } from '@jest/globals';
+import { test, expect } from '@jest/globals';
 import { IrcServer, TestClient } from './util/irc-server';
 import { DefaultIrcSupported, IrcConnection, IrcInMemoryState } from '../src';
 import { createConnection } from 'net';
