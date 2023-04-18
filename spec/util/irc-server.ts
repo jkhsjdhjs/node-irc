@@ -9,6 +9,7 @@ export class TestClient extends Client {
     public readonly errors: Message[] = [];
 
     public connect(fn?: () => void) {
+        // These can be IRC errors which aren't fatal to tests.
         this.on('error', msg => this.errors.push(msg));
         super.connect(fn);
     }
