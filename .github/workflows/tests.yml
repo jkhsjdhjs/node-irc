@@ -32,18 +32,19 @@ jobs:
       - run: yarn test
   integration:
     runs-on: ubuntu-latest
+    services:
+      ircd:
+        image: inspircd/inspircd-docker
+        env:
+          # Don't check domain against blacklists
+          INSP_ENABLE_DNSBL: no
+        ports:
+          - 6667:6667
     strategy:
       matrix:
         node_version: [16, 18]
     steps:
       - uses: actions/checkout@v2
-      - name: Set up inspircd
-        run: |
-          sudo apt update
-          sudo apt install inspircd
-          sudo cp .github/support/inspircd.conf /etc/inspircd/inspircd.conf
-          sudo ls -l /etc/inspircd/
-          sudo inspircd --runasroot --nopid
       - name: Use Node.js ${{ matrix.node_version }}
         uses: actions/setup-node@v1
         with:
