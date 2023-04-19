@@ -4,7 +4,7 @@ This is a fork of [node-irc](http://node-irc.readthedocs.org/), which is an IRC 
 
 To use this package:
 ```
-  npm install matrix-org-irc
+  yarn add matrix-org-irc
 ```
 
 # Differences from `node-irc`
