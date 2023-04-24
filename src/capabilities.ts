@@ -32,15 +32,16 @@ class Capabilities {
     }
 }
 
-type IrcCapabilitiesEvents = {
+type IrcCapabilitiesEventEmitter = TypedEmitter<{
     serverCapabilitesReady: () => void,
     userCapabilitesReady: () => void,
-}
+}>;
+
 
 /**
  * A helper class to handle capabilities sent by the IRCd.
  */
-export class IrcCapabilities extends (EventEmitter as unknown as new () => TypedEmitter<IrcCapabilitiesEvents>) {
+export class IrcCapabilities extends (EventEmitter as new () => IrcCapabilitiesEventEmitter) {
     private serverCapabilites = new Capabilities();
     private userCapabilites = new Capabilities();
 
