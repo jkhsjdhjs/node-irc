@@ -1,5 +1,5 @@
-import * as ircColors from 'irc-colors';
-import {CommandType, replyCodes} from './codes';
+import { CommandType, replyCodes } from './codes';
+import { stripColorsAndStyle } from './colors';
 
 export interface Message {
     prefix?: string;
@@ -29,7 +29,7 @@ export function parseMessage(line: string, stripColors: boolean): Message {
     };
 
     if (stripColors) {
-        line = ircColors.stripColorsAndStyle(line);
+        line = stripColorsAndStyle(line);
     }
 
     // Parse prefix
@@ -66,7 +66,7 @@ export function parseMessage(line: string, stripColors: boolean): Message {
         if (!match) {
             throw Error('Invalid format, could not parse parameters');
         }
-        middle = match[1].trimRight();
+        middle = match[1].trimEnd();
         trailing = match[2];
     }
     else {
