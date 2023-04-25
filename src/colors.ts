@@ -33,7 +33,7 @@ const styles = Object.freeze({
     monospace     : '\x11',
 });
 
-const styleChars = Object.freeze([...Object.values(styles)]);
+const styleChars: Readonly<string[]> = Object.freeze([...Object.values(styles)]);
 const coloringCharacter = '\x03';
 
 export function wrap(color: keyof(typeof codes), text: string, resetColor: keyof(typeof codes)) {
@@ -70,12 +70,12 @@ export function stripColorsAndStyle(str: string): string {
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
     THE SOFTWARE.
     */
-    str = str.replace(/\x03\d{0,2}(,\d{0,2}|\x02\x02)?/g, '');
 
+    // Strip style
     const path: [string, number][] = [];
     for (let i = 0, len = str.length; i < len; i++) {
         const char = str[i];
-        if (char in styleChars || char === coloringCharacter) {
+        if (styleChars.includes(char) || char === coloringCharacter) {
             const lastChar = path[path.length - 1];
             if (lastChar && lastChar[0] === char) {
                 const p0 = lastChar[1];
@@ -93,7 +93,7 @@ export function stripColorsAndStyle(str: string): string {
         }
     }
 
-    // Remove any unmatching style characterss.
+    // Remove any unmatching style characters.
     // Traverse list backwards to make removing less complicated.
     for (const char of path.reverse()) {
         if (char[0] !== coloringCharacter) {
@@ -101,6 +101,9 @@ export function stripColorsAndStyle(str: string): string {
             str = str.slice(0, pos) + str.slice(pos + 1);
         }
     }
+
+    // Strip colors
+    str = str.replace(/\x03\d{0,2}(,\d{0,2}|\x02\x02)?/g, '');
     return str;
 }
 

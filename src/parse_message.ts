@@ -27,7 +27,6 @@ export function parseMessage(line: string, stripColors: boolean): Message {
         args: [],
         commandType: 'normal',
     };
-
     if (stripColors) {
         line = stripColorsAndStyle(line);
     }
