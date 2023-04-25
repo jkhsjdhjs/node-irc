@@ -1,8 +1,8 @@
 import { describe, expect, test } from '@jest/globals';
-import { IrcServer } from './util/irc-server';
+import { TestIrcServer } from '..';
 
 
-IrcServer.describe('Client', (server) => {
+TestIrcServer.describe('Client', (server) => {
     describe('joining channels', () => {
         test('will get a join event from a newly joined user', async () => {
             const [speaker, listener] = server().clients;

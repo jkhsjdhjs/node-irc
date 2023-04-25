@@ -5,6 +5,10 @@ import { describe, beforeEach, afterEach } from '@jest/globals';
 const DEFAULT_PORT = parseInt(process.env.IRC_TEST_PORT ?? '6667', 10);
 const DEFAULT_ADDRESS = process.env.IRC_TEST_ADDRESS ?? "127.0.0.1";
 
+/**
+ * Exposes a client instance with helper methods to listen
+ * for events.
+ */
 export class TestClient extends Client {
     public readonly errors: Message[] = [];
 
@@ -29,7 +33,34 @@ export class TestClient extends Client {
     }
 }
 
-export class IrcServer {
+/**
+ * A jest-compatible test rig that can be used to run tests against an IRC server.
+ *
+ * @example
+ * ```ts
+ *  IrcServer.describe('Client', (server) => {
+      describe('joining channels', () => {
+        test('will get a join event from a newly joined user', async () => {
+            const [speaker, listener] = server().clients;
+
+            // Join the room and listen
+            const listenerJoinPromise = listener.waitForEvent('join');
+            await listener.join('#foobar');
+            const [lChannel, lNick] = await listenerJoinPromise;
+            expect(lNick).toBe(listener.nick);
+            expect(lChannel).toBe('#foobar');
+
+            const speakerJoinPromise = listener.waitForEvent('join');
+            await speaker.join('#foobar');
+            const [channel, nick] = await speakerJoinPromise;
+            expect(nick).toBe(speaker.nick);
+            expect(channel).toBe('#foobar');
+        });
+      });
+    });
+ * ```
+ */
+export class TestIrcServer {
 
     /**
      * Test wrapper that automatically provisions an IRC server
@@ -37,11 +68,11 @@ export class IrcServer {
      * @param fn The inner function
      * @returns A jest describe function.
      */
-    static describe(name: string, fn: (server: () => IrcServer) => void, opts?: {clients: string[]}) {
+    static describe(name: string, fn: (server: () => TestIrcServer) => void, opts?: {clients: string[]}) {
         return describe(name, () => {
-            let server: IrcServer;
+            let server: TestIrcServer;
             beforeEach(async () => {
-                server = new IrcServer();
+                server = new TestIrcServer();
                 await server.setUp(opts?.clients);
             });
             afterEach(async () => {
@@ -62,7 +93,7 @@ export class IrcServer {
         const connections: Promise<void>[] = [];
         for (let index = 0; index < clients.length; index++) {
             const client =
-                new TestClient(this.address, IrcServer.generateUniqueNick(clients[index]), {
+                new TestClient(this.address, TestIrcServer.generateUniqueNick(clients[index]), {
                     port: this.port,
                     autoConnect: false,
                     connectionTimeout: 4000,
