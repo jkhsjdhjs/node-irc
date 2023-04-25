@@ -110,7 +110,6 @@ export interface IrcClientState {
    hostMask: string;
    chans: Map<string, ChanData>;
    prefixForMode: {[mode: string]: string}; // o => @
-   maxLineLength: number;
    lastSendTime: number;
    flush?: () => void;
 }
@@ -125,7 +124,6 @@ export class IrcInMemoryState implements IrcClientState {
     public prefixForMode: {[mode: string]: string} = {}; // o => @
     public hostMask = '';
     public chans = new Map<string, ChanData>();
-    public maxLineLength = -1;
     public lastSendTime = 0;
     public capabilities: IrcCapabilities = new IrcCapabilities();
     constructor (public supportedState: IrcSupported) {

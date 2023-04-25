@@ -180,7 +180,8 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
     }
 
     get maxLineLength(): number {
-        return this.state.maxLineLength;
+        // 497 = 510 - (":" + "!" + " PRIVMSG " + " :").length;
+        return 497 - this.state.currentNick.length - this.state.hostMask.length;
     }
 
     get hostMask() {
@@ -220,10 +221,12 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         }
         this.state.capabilities.once('serverCapabilitesReady', () => {
             this.onCapsList();
+            // Flush on capabilities modified
             this.state.flush?.();
         })
         this.state.capabilities.once('userCapabilitesReady', () => {
             this.onCapsConfirmed();
+            // Flush on capabilities modified
             this.state.flush?.();
         })
         /**
@@ -331,22 +334,24 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         // neighbors and truncate our messages accordingly.
         const welcomeStringWords = message.args[1].split(/\s+/);
         this.state.hostMask = welcomeStringWords[welcomeStringWords.length - 1];
-        this._updateMaxLineLength();
         this.emit('registered');
         this.state.registered = true;
+        // Flush because we've made several state changes.
+        this.state.flush?.();
         this.whois(this.state.currentNick, (args) => {
             if (!args) {
                 // TODO: We can't find our own nick, so do nothing here.
-                return
+                return;
             }
             this.state.currentNick = args.nick;
             this.state.hostMask = args.user + "@" + args.host;
-            this._updateMaxLineLength();
+            this.state.flush?.();
         });
     }
 
     private onReplyMyInfo(message: Message) {
         this.state.supportedState.usermodes = message.args[3];
+        this.state.flush?.();
     }
 
     private onReplyISupport(message: Message) {
@@ -475,7 +480,8 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
 
         this._send('NICK', nextNick);
         this.state.currentNick = nextNick;
-        this._updateMaxLineLength();
+        // Flush on nick update.
+        this.state.flush?.();
     }
 
     private onNotice(message: Message) {
@@ -591,6 +597,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
                 this.emit(eventName, chanName, from, mode, undefined, message);
             }
         });
+        // Flush any channel data updates.
         this.state.flush?.();
     }
 
@@ -601,7 +608,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         if (message.nick === this.nick) {
             // the user just changed their own nick
             this.state.currentNick = message.args[0];
-            this._updateMaxLineLength();
+            this.state.flush?.();
         }
 
         if (this.opt.debug) {
@@ -619,6 +626,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
                 channelsForNick.push(channame);
             }
         });
+        // Flush changes to the channel membership
         this.state.flush?.();
 
         // old nick, new nick, channels
@@ -674,6 +682,10 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
                 }
             }
         });
+        // If the channel user list was modified, flush.
+        if (users.length) {
+            this.state.flush?.()
+        }
     }
 
     private onReplyNameEnd(message: Message) {
@@ -707,6 +719,8 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
                 channel.topicBy = message.nick;
             }
         }
+        // Channel data updated, flush
+        this.state.flush?.();
     }
 
     private onReplyChannelList(message: Message) {
@@ -726,6 +740,8 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         const channel = this.chanData(message.args[1]);
         if (channel) {
             channel.topicBy = message.args[2];
+            // TopicBy updated, flush.
+            this.state.flush?.();
             // We *should* know the topic at this point as servers usually send a topic first,
             // but don't emit if we don't have it yet.
             if (channel.topic) {
@@ -739,6 +755,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         const channel = this.chanData(message.args[1]);
         if (channel) {
             channel.mode = message.args[2];
+            this.state.flush?.();
         }
 
         this.emit('mode_is', message.args[1], message.args[2]);
@@ -749,6 +766,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         const channel = this.chanData(message.args[1]);
         if (channel) {
             channel.created = message.args[2];
+            this.state.flush?.();
         }
     }
 
@@ -765,6 +783,8 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
             if (message.nick && channel && channel.users) {
                 channel.users.set(message.nick, '');
             }
+            // Channel modified, flush
+            this.state.flush?.();
         }
         this.emit('join', message.args[0], message.nick, message);
         this.emit(('join' + message.args[0]) as JoinEventIndex, message.nick, message);
@@ -798,6 +818,8 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
             if (channel && channel.users && message.nick) {
                 channel.users.delete(message.nick);
             }
+            // Channel modified, flush
+            this.state.flush?.();
         }
     }
 
@@ -816,6 +838,8 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
             if (channel && channel.users) {
                 channel.users.delete(message.args[1]);
             }
+            // Channel modified, flush
+            this.state.flush?.();
         }
     }
 
@@ -890,6 +914,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
                 quitChannels.push(channame);
             }
         }
+        // Deleting channel data, flushing
         this.state.flush?.();
 
         // who, reason, channels
@@ -946,7 +971,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         const rndNick = "enick_" + Math.floor(Math.random() * 1000) // random 3 digits
         this._send('NICK', rndNick);
         this.state.currentNick = rndNick;
-        this._updateMaxLineLength();
+        this.state.flush?.();
     }
 
     private onRaw(message: Message): void {
@@ -1131,8 +1156,9 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
                 mode: '',
                 modeParams: new Map(),
             });
+            // Flush on channel data mutation
+            this.state.flush?.();
         }
-        this.state.flush?.();
 
         return existing;
     }
@@ -1143,6 +1169,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         // have joined a channel fully and stored it in state.
         // Ensure that we have chanData before deleting
         this.state.chans.delete(key);
+        // Flush on channel data mutation
         this.state.flush?.();
     }
 
@@ -1162,7 +1189,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         this._send('CAP LS', '302');
         this._send('NICK', this.nick);
         this.state.currentNick = this.nick;
-        this._updateMaxLineLength();
+        this.state.flush?.();
         this._send('USER', this.opt.userName, '8', '*', this.opt.realName);
         this.emit('connect');
     }
@@ -1565,7 +1592,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
     }
 
     private _splitMessage(target: string, text: string): string[] {
-        const maxLength = Math.min(this.state.maxLineLength - target.length, this.opt.messageSplit);
+        const maxLength = Math.min(this.maxLineLength - target.length, this.opt.messageSplit);
         if (!text) {
             return [];
         }
@@ -1721,13 +1748,6 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         }
 
         return str;
-    }
-
-    // blatantly stolen from irssi's splitlong.pl. Thanks, Bjoern Krombholz!
-    private _updateMaxLineLength(): void {
-        // 497 = 510 - (":" + "!" + " PRIVMSG " + " :").length;
-        // target is determined in _speak() and subtracted there
-        this.state.maxLineLength = 497 - this.nick.length - this.hostMask.length;
     }
 
     // Checks the arg at the given index for a channel. If one exists, casemap it
