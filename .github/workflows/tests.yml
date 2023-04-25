@@ -1,5 +1,9 @@
 name: CI
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [ master ]
@@ -19,6 +23,7 @@ jobs:
     - run: yarn lint
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       matrix:
         node_version: [18, 20]
@@ -32,6 +37,7 @@ jobs:
       - run: yarn test
   integration:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     services:
       ircd:
         image: inspircd/inspircd-docker
