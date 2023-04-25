@@ -37,32 +37,32 @@ export class TestClient extends Client {
  *
  * @example
  * ```ts
-    // let server: TestIrcServer;
-    // beforeEach(() => {
-    //     server = new TestIrcServer();
-    //     return server.setUp();
-    // });
-    // afterEach(() => {
-    //     return server.tearDown();
-    // })
-    // describe('joining channels', () => {
-    //     test('will get a join event from a newly joined user', async () => {
-    //         const { speaker, listener } = server.clients;
+    let server: TestIrcServer;
+    beforeEach(() => {
+        server = new TestIrcServer();
+        return server.setUp();
+    });
+    afterEach(() => {
+        return server.tearDown();
+    })
+    describe('joining channels', () => {
+        test('will get a join event from a newly joined user', async () => {
+            const { speaker, listener } = server.clients;
 
-    //         // Join the room and listen
-    //         const listenerJoinPromise = listener.waitForEvent('join');
-    //         await listener.join('#foobar');
-    //         const [lChannel, lNick] = await listenerJoinPromise;
-    //         expect(lNick).toBe(listener.nick);
-    //         expect(lChannel).toBe('#foobar');
+            // Join the room and listen
+            const listenerJoinPromise = listener.waitForEvent('join');
+            await listener.join('#foobar');
+            const [lChannel, lNick] = await listenerJoinPromise;
+            expect(lNick).toBe(listener.nick);
+            expect(lChannel).toBe('#foobar');
 
-    //         const speakerJoinPromise = listener.waitForEvent('join');
-    //         await speaker.join('#foobar');
-    //         const [channel, nick] = await speakerJoinPromise;
-    //         expect(nick).toBe(speaker.nick);
-    //         expect(channel).toBe('#foobar');
-    //     });
-    // });
+            const speakerJoinPromise = listener.waitForEvent('join');
+            await speaker.join('#foobar');
+            const [channel, nick] = await speakerJoinPromise;
+            expect(nick).toBe(speaker.nick);
+            expect(channel).toBe('#foobar');
+        });
+    });
  * ```
  */
 export class TestIrcServer {
