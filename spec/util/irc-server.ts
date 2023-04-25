@@ -1,11 +1,19 @@
 import { randomUUID } from 'crypto';
-import { Client, ClientEvents } from '../../lib';
+import { Client, ClientEvents, Message } from '../../src';
 import { describe, beforeEach, afterEach } from '@jest/globals';
 
 const DEFAULT_PORT = parseInt(process.env.IRC_TEST_PORT ?? '6667', 10);
 const DEFAULT_ADDRESS = process.env.IRC_TEST_ADDRESS ?? "127.0.0.1";
 
 export class TestClient extends Client {
+    public readonly errors: Message[] = [];
+
+    public connect(fn?: () => void) {
+        // These can be IRC errors which aren't fatal to tests.
+        this.on('error', msg => this.errors.push(msg));
+        super.connect(fn);
+    }
+
     public waitForEvent<T extends keyof ClientEvents>(
         eventName: T, timeoutMs = 5000
     ): Promise<Parameters<ClientEvents[T]>> {
@@ -48,7 +56,7 @@ export class IrcServer {
     }
 
     public readonly clients: TestClient[] = [];
-    constructor(private readonly address = DEFAULT_ADDRESS, private readonly port = DEFAULT_PORT) { }
+    constructor(public readonly address = DEFAULT_ADDRESS, public readonly port = DEFAULT_PORT) { }
 
     async setUp(clients = ['speaker', 'listener']) {
         const connections: Promise<void>[] = [];

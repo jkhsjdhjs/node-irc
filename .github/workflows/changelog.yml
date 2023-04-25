@@ -5,7 +5,8 @@ on:
 
 jobs:
   changelog:
-    if: ${{ github.base_ref == 'develop'  || contains(github.base_ref, 'release-') }}
+    # TODO: Change to 'main'
+    if: ${{ github.base_ref == 'master'  || contains(github.base_ref, 'release-') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -14,6 +15,6 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-python@v2
       - run: pip install towncrier==19.2.0
-      - run: scripts/check-newsfragment
+      - run: scripts/changelog-check.sh
         env:
           PULL_REQUEST_NUMBER: ${{ github.event.number }}
