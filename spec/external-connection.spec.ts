@@ -1,5 +1,5 @@
-import { test, expect } from '@jest/globals';
-import { TestIrcServer, TestClient } from '..';
+import { test, expect, describe, beforeEach, afterEach } from '@jest/globals';
+import { TestIrcServer, TestClient } from '../src/testing';
 import { DefaultIrcSupported, IrcConnection, IrcInMemoryState } from '../src';
 import { createConnection } from 'net';
 
@@ -10,10 +10,17 @@ class TestIrcInMemoryState extends IrcInMemoryState {
     }
 }
 
-TestIrcServer.describe('Client with external connection', (getServer) => {
+describe('Client with external connection', () => {
+    let server: TestIrcServer;
+    beforeEach(() => {
+        server = new TestIrcServer();
+        return server.setUp([]);
+    });
+    afterEach(() => {
+        return server.tearDown();
+    })
     let client: TestClient;
     test('can connect with a fresh session', async () => {
-        const server = getServer();
         const inMemoryState = new TestIrcInMemoryState(DefaultIrcSupported);
         client = new TestClient(server.address, TestIrcServer.generateUniqueNick("mynick"), {
             port: server.port,
@@ -30,7 +37,6 @@ TestIrcServer.describe('Client with external connection', (getServer) => {
         client.disconnect();
     });
     test('can connect with a reused session', async () => {
-        const server = getServer();
         const inMemoryState = new TestIrcInMemoryState(DefaultIrcSupported);
         const persistentConnection = createConnection({
             port: server.port,
@@ -56,6 +62,4 @@ TestIrcServer.describe('Client with external connection', (getServer) => {
         await promise;
         client.disconnect();
     }, 15000);
-}, {
-    clients: [],
 });

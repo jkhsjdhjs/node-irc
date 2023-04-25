@@ -1,6 +1,5 @@
 import { randomUUID } from 'crypto';
-import { Client, ClientEvents, Message } from '../../src';
-import { describe, beforeEach, afterEach } from '@jest/globals';
+import { Client, ClientEvents, Message } from '..';
 
 const DEFAULT_PORT = parseInt(process.env.IRC_TEST_PORT ?? '6667', 10);
 const DEFAULT_ADDRESS = process.env.IRC_TEST_ADDRESS ?? "127.0.0.1";
@@ -38,67 +37,53 @@ export class TestClient extends Client {
  *
  * @example
  * ```ts
- *  IrcServer.describe('Client', (server) => {
-      describe('joining channels', () => {
-        test('will get a join event from a newly joined user', async () => {
-            const [speaker, listener] = server().clients;
+    // let server: TestIrcServer;
+    // beforeEach(() => {
+    //     server = new TestIrcServer();
+    //     return server.setUp();
+    // });
+    // afterEach(() => {
+    //     return server.tearDown();
+    // })
+    // describe('joining channels', () => {
+    //     test('will get a join event from a newly joined user', async () => {
+    //         const { speaker, listener } = server.clients;
 
-            // Join the room and listen
-            const listenerJoinPromise = listener.waitForEvent('join');
-            await listener.join('#foobar');
-            const [lChannel, lNick] = await listenerJoinPromise;
-            expect(lNick).toBe(listener.nick);
-            expect(lChannel).toBe('#foobar');
+    //         // Join the room and listen
+    //         const listenerJoinPromise = listener.waitForEvent('join');
+    //         await listener.join('#foobar');
+    //         const [lChannel, lNick] = await listenerJoinPromise;
+    //         expect(lNick).toBe(listener.nick);
+    //         expect(lChannel).toBe('#foobar');
 
-            const speakerJoinPromise = listener.waitForEvent('join');
-            await speaker.join('#foobar');
-            const [channel, nick] = await speakerJoinPromise;
-            expect(nick).toBe(speaker.nick);
-            expect(channel).toBe('#foobar');
-        });
-      });
-    });
+    //         const speakerJoinPromise = listener.waitForEvent('join');
+    //         await speaker.join('#foobar');
+    //         const [channel, nick] = await speakerJoinPromise;
+    //         expect(nick).toBe(speaker.nick);
+    //         expect(channel).toBe('#foobar');
+    //     });
+    // });
  * ```
  */
 export class TestIrcServer {
-
-    /**
-     * Test wrapper that automatically provisions an IRC server
-     * @param name The test name
-     * @param fn The inner function
-     * @returns A jest describe function.
-     */
-    static describe(name: string, fn: (server: () => TestIrcServer) => void, opts?: {clients: string[]}) {
-        return describe(name, () => {
-            let server: TestIrcServer;
-            beforeEach(async () => {
-                server = new TestIrcServer();
-                await server.setUp(opts?.clients);
-            });
-            afterEach(async () => {
-                await server.tearDown();
-            });
-            fn(() => server);
-        });
-    }
 
     static generateUniqueNick(name = 'default') {
         return `${name}-${randomUUID().replace('-', '').substring(0, 8)}`;
     }
 
-    public readonly clients: TestClient[] = [];
+    public readonly clients: Record<string, TestClient> = {};
     constructor(public readonly address = DEFAULT_ADDRESS, public readonly port = DEFAULT_PORT) { }
 
     async setUp(clients = ['speaker', 'listener']) {
         const connections: Promise<void>[] = [];
-        for (let index = 0; index < clients.length; index++) {
+        for (const clientName of clients) {
             const client =
-                new TestClient(this.address, TestIrcServer.generateUniqueNick(clients[index]), {
+                new TestClient(this.address, TestIrcServer.generateUniqueNick(clientName), {
                     port: this.port,
                     autoConnect: false,
                     connectionTimeout: 4000,
                 });
-            this.clients.push(client);
+            this.clients[clientName] = client;
             connections.push(new Promise<void>((resolve, reject) => {
                 client.once('error', e => reject(e));
                 client.connect(resolve)
@@ -109,7 +94,7 @@ export class TestIrcServer {
 
     async tearDown() {
         const connections: Promise<void>[] = [];
-        for (const client of this.clients) {
+        for (const client of Object.values(this.clients)) {
             connections.push(new Promise<void>((resolve, reject) => {
                 client.once('error', e => reject(e));
                 client.disconnect(resolve)
