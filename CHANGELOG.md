@@ -3,6 +3,12 @@
 
 NOTE: This release removes support for Node 16. Please update to Node 18 or greater.
 
+Features
+--------
+
+- Add support for splitting out the IRC connection state, and connecting via an existing socket. ([\#99](https://github.com/matrix-org/node-irc/issues/99))
+- Export utilities for testing against ircds. ([\#102](https://github.com/matrix-org/node-irc/issues/102))
+
 Deprecations and Removals
 -------------------------
 
@@ -14,9 +20,7 @@ Internal Changes
 ----------------
 
 - Add support for testing against an actual IRCD. ([\#94](https://github.com/matrix-org/node-irc/issues/94))
-- Add support for splitting out the IRC connection state, and connecting via an existing socket. ([\#99](https://github.com/matrix-org/node-irc/issues/99))
 - Use ergo as our ircd of choice for automated testing. ([\#101](https://github.com/matrix-org/node-irc/issues/101))
-- Export utilities for testing against ircds. ([\#102](https://github.com/matrix-org/node-irc/issues/102))
 
 
 1.5.0 (2022-10-03)
