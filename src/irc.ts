@@ -618,10 +618,9 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         const channelsForNick: string[] = [];
 
         // finding what channels a user is in
-        Object.entries(this.state.chans).forEach(([channame, nickChannel]) => {
-            const chanUser = message.nick && nickChannel.users.get(message.nick);
-            if (message.nick && chanUser) {
-                nickChannel.users.set(message.args[0], chanUser);
+        this.state.chans.forEach((nickChannel, channame) => {
+            if (message.nick && nickChannel.users.has(message.nick)) {
+                nickChannel.users.set(message.args[0], nickChannel.users.get(message.nick));
                 nickChannel.users.delete(message.nick);
                 channelsForNick.push(channame);
             }
