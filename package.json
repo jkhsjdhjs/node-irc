@@ -7,8 +7,9 @@
     "prepare": "yarn run build",
     "build": "tsc --project tsconfig.json",
     "lint": "eslint -c .eslintrc --max-warnings 0 'src/**/*.ts'",
-    "test": "tap ./test/test-*.js",
-    "test:integration": "jest"
+    "test": "yarn test:unit # alias for the moment",
+    "test:unit": "jest test/*",
+    "test:integration": "jest spec/*"
   },
   "contributors": [
     "node-irc contributors"
@@ -39,8 +40,6 @@
     "@typescript-eslint/parser": "^5.59.1",
     "eslint": "^8.39.0",
     "jest": "^29.5.0",
-    "tap": "^16.3.4",
-    "tape": "^5.6.3",
     "ts-jest": "^29.1.0",
     "typescript": "^5.0.4"
   },
