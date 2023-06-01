@@ -1,12 +1,10 @@
 import { MockIrcd } from './helpers';
 import { Client } from "../src";
-import { test, expect, jest } from "@jest/globals";
+import { test } from "@jest/globals";
 
 test('user gets opped in auditorium', async () => {
     const mock = new MockIrcd();
     const client = new Client('localhost', 'testbot', {debug: true, port: await mock.listen()});
-
-    const modehandler = jest.fn();
 
 
     mock.server.on('connection', function() {
