@@ -1,6 +1,6 @@
 import { MockIrcd } from './helpers';
 import { Client } from "../src";
-import { test } from "@jest/globals";
+import { test, expect} from "@jest/globals";
 
 test('user gets opped in auditorium', async () => {
     const mock = new MockIrcd();
@@ -27,9 +27,9 @@ test('user gets opped in auditorium', async () => {
 
     await new Promise<void>((resolve) => {
         client.on('+mode', (channel: string, by: string, mode: string, argument?: string) => {
-            if (channel === '#auditorium' && argument === 'user') {
-                resolve();
-            }
+            expect(channel).toEqual('#auditorium');
+            expect(argument).toEqual('user');
+            resolve();
         });
     });
 
