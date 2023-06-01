@@ -1,19 +1,18 @@
-var net = require('net');
+import { MockIrcd } from './helpers';
+import { Client } from "../src";
+import { test, expect, jest } from "@jest/globals";
 
-var irc = require('../lib/irc');
-var test = require('tape');
+test('user gets opped in auditorium', async () => {
+    const mock = new MockIrcd();
+    const client = new Client('localhost', 'testbot', {debug: true, port: await mock.listen()});
 
-var testHelpers = require('./helpers');
-
-test('user gets opped in auditorium', function(t) {
-    var mock = testHelpers.MockIrcd();
-    var client = new irc.Client('localhost', 'testbot', {debug: true});
-
-    client.on('+mode', function(channel, by, mode, argument) {
-        if (channel == '#auditorium' && argument == 'user') {
+    const modehandler = jest.fn((channel: string, by: string, mode: string, argument?: string) => {
+        if (channel === '#auditorium' && argument === 'user') {
             client.disconnect();
         }
     });
+
+    client.on('+mode', modehandler);
 
     mock.server.on('connection', function() {
         // Initiate connection
@@ -31,6 +30,6 @@ test('user gets opped in auditorium', function(t) {
 
     mock.on('end', function() {
         mock.close();
-        t.end();
+        expect(modehandler).toBeCalled();
     });
 });
