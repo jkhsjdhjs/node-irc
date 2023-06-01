@@ -24,12 +24,12 @@ test('connect and sets hostmask when nick in use', async () => {
     });
 
     mock.on('end', function() {
+        mock.close();
         const msgs = mock.getIncomingMsgs();
 
         for (let i = 0; i < msgs.length; i++) {
             expect(msgs[i]).toEqual(fixtures.sent[i][0]);
         }
-        mock.close();
 
         expect.assertions(fixtures.sent.length + fixtures.received.length + fixtures.clientInfo.length);
     });

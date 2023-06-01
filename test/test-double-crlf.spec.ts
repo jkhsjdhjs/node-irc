@@ -21,12 +21,12 @@ test('sent messages ending with double CRLF', async () => {
     });
 
     mock.on('end', function() {
+        mock.close();
         const msgs = mock.getIncomingMsgs();
 
         for (let i = 0; i < msgs.length; i++) {
             expect(msgs[i]).toEqual(expected.sent[i][0]);
         }
-        mock.close();
 
         expect.assertions(expected.sent.length + expected.received.length);
     });

@@ -6,13 +6,8 @@ test('user gets opped in auditorium', async () => {
     const mock = new MockIrcd();
     const client = new Client('localhost', 'testbot', {debug: true, port: await mock.listen()});
 
-    const modehandler = jest.fn((channel: string, by: string, mode: string, argument?: string) => {
-        if (channel === '#auditorium' && argument === 'user') {
-            client.disconnect();
-        }
-    });
+    const modehandler = jest.fn();
 
-    client.on('+mode', modehandler);
 
     mock.server.on('connection', function() {
         // Initiate connection
@@ -30,6 +25,15 @@ test('user gets opped in auditorium', async () => {
 
     mock.on('end', function() {
         mock.close();
-        expect(modehandler).toBeCalled();
     });
+
+    await new Promise<void>((resolve) => {
+        client.on('+mode', (channel: string, by: string, mode: string, argument?: string) => {
+            if (channel === '#auditorium' && argument === 'user') {
+                resolve();
+            }
+        });
+    });
+
+    client.disconnect();
 });
