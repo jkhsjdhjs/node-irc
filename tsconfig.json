@@ -15,7 +15,8 @@
       "baseUrl": "./src",
       "paths": {
         "*": ["./typings/*"]
-      }
+      },
+      "resolveJsonModule": true
     },
     "include": [
       "src/**/*"
