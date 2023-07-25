@@ -56,6 +56,7 @@ export type ClientEvents = {
     pong: (pingData: string) => void,
     netError: (error: Error) => void,
     part: (channel: IrcChannelName, nick: MessageNick, reason: string, message: Message) => void,
+    isupport: () => void,
     [key: JoinEventIndex]: (who: MessageNick, message: Message) => void,
     [key: PartEventIndex]: (nick: MessageNick, who: string, message: Message) => void,
     [key: MessageEventIndex]: (nick: MessageNick, who: string, message: Message) => void,

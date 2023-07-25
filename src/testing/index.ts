@@ -84,10 +84,13 @@ export class TestIrcServer {
                     connectionTimeout: 4000,
                 });
             this.clients[clientName] = client;
-            connections.push(new Promise<void>((resolve, reject) => {
+            // Make sure we load isupport before reporting readyness.
+            const isupportEvent = client.waitForEvent('isupport').then(() => undefined);
+            const connectionPromise = new Promise<void>((resolve, reject) => {
                 client.once('error', e => reject(e));
                 client.connect(resolve)
-            }));
+            }).then(() => isupportEvent);
+            connections.push(connectionPromise);
         }
         await Promise.all(connections);
     }

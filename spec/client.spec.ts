@@ -57,9 +57,10 @@ describe('Client', () => {
             const { speaker } = server.clients;
             await speaker.join('#foobar');
             await speaker.waitForEvent('join');
-            speaker.send('MODE', '#foobar', '+m');
+            const modeEvent = speaker.waitForEvent('+mode');
+            await speaker.send('MODE', '#foobar', '+m');
 
-            const [channel, nick, mode, user] = await speaker.waitForEvent('+mode');
+            const [channel, nick, mode, user] = await modeEvent;
             expect(nick).toBe(speaker.nick);
             expect(channel).toBe('#foobar');
             expect(mode).toBe('m');
@@ -69,10 +70,11 @@ describe('Client', () => {
             const { speaker } = server.clients;
             await speaker.join('#foobar');
             await speaker.waitForEvent('join');
+            const modeEvent = speaker.waitForEvent('-mode');
             await speaker.send('MODE', '#foobar', '+m');
             speaker.send('MODE', '#foobar', '-m');
 
-            const [channel, nick, mode, user] = await speaker.waitForEvent('-mode');
+            const [channel, nick, mode, user] = await modeEvent;
             expect(nick).toBe(speaker.nick);
             expect(channel).toBe('#foobar');
             expect(mode).toBe('m');
@@ -83,9 +85,10 @@ describe('Client', () => {
             await speaker.join('#foobar');
             await listener.join('#foobar');
             await speaker.waitForEvent('join');
+            const modeEvent = speaker.waitForEvent('+mode');
             await speaker.send('MODE', '#foobar', '+o', listener.nick);
 
-            const [channel, nick, mode, user] = await speaker.waitForEvent('+mode');
+            const [channel, nick, mode, user] = await modeEvent;
             expect(nick).toBe(speaker.nick);
             expect(channel).toBe('#foobar');
             expect(mode).toBe('o');
@@ -96,14 +99,28 @@ describe('Client', () => {
             await speaker.join('#foobar');
             await listener.join('#foobar');
             await speaker.waitForEvent('join');
+            const modeEvent = speaker.waitForEvent('-mode');
             await speaker.send('MODE', '#foobar', '+o', listener.nick);
             await speaker.send('MODE', '#foobar', '-o', listener.nick);
 
-            const [channel, nick, mode, user] = await speaker.waitForEvent('-mode');
+            const [channel, nick, mode, user] = await modeEvent;
             expect(nick).toBe(speaker.nick);
             expect(channel).toBe('#foobar');
             expect(mode).toBe('o');
             expect(user).toBe(listener.nick);
+        });
+    });
+    describe('joining channels', () => {
+        test('will get a join event from a newly joined user', async () => {
+            const { speaker } = server.clients;
+            const iSupportOriginal = JSON.parse(JSON.stringify(speaker.supported));
+            // We assume the original isupport has arrived by this point.
+            const isupportEventPromise = speaker.waitForEvent('isupport');
+            await speaker.send('VERSION');
+            await isupportEventPromise;
+
+            const iSupportNew = JSON.parse(JSON.stringify(speaker.supported));
+            expect(iSupportNew).toEqual(iSupportOriginal);
         });
     });
 });
