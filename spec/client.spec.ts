@@ -99,8 +99,8 @@ describe('Client', () => {
             await speaker.join('#foobar');
             await listener.join('#foobar');
             await speaker.waitForEvent('join');
-            const modeEvent = speaker.waitForEvent('-mode');
             await speaker.send('MODE', '#foobar', '+o', listener.nick);
+            const modeEvent = speaker.waitForEvent('-mode');
             await speaker.send('MODE', '#foobar', '-o', listener.nick);
 
             const [channel, nick, mode, user] = await modeEvent;
