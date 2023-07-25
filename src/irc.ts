@@ -355,8 +355,14 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
     }
 
     private onReplyISupport(message: Message) {
+
         // Clear extras
         this.state.supportedState.extra = [];
+        // Clear modes
+        this.state.supportedState.channel.modes = {
+            a:'', b:'', c:'', d:''
+        };
+
         message.args.forEach((arg) => {
             let match;
             match = arg.match(/([A-Z]+)=(.*)/);
@@ -380,9 +386,6 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
                 case 'CHANMODES': {
                     const values = value.split(',');
                     const type: ['a', 'b', 'c', 'd'] = ['a', 'b', 'c', 'd'];
-                    this.state.supportedState.channel.modes = {
-                        a:'', b:'', c:'', d:''
-                    };
                     for (let i = 0; i < type.length; i++) {
                         this.state.supportedState.channel.modes[type[i]] += values[i];
                     }
