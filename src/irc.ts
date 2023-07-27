@@ -355,6 +355,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
     }
 
     private onReplyISupport(message: Message) {
+        // Clear modes
         message.args.forEach((arg) => {
             let match;
             match = arg.match(/([A-Z]+)=(.*)/);
@@ -379,7 +380,12 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
                     const values = value.split(',');
                     const type: ['a', 'b', 'c', 'd'] = ['a', 'b', 'c', 'd'];
                     for (let i = 0; i < type.length; i++) {
-                        this.state.supportedState.channel.modes[type[i]] += values[i];
+                        // Note, we don't detect removed modes here.
+                        // But we don't expect that to happen to a connection.
+                        const mode = values[i];
+                        if (!this.state.supportedState.channel.modes[type[i]].includes(mode)) {
+                            this.state.supportedState.channel.modes[type[i]] += mode;
+                        }
                     }
                     break;
                 }
@@ -415,7 +421,9 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
                         const match2 = match[2].split('');
                         while (match1.length) {
                             this.state.modeForPrefix[match2[0]] = match1[0];
-                            this.state.supportedState.channel.modes.b += match1[0];
+                            if (!this.state.supportedState.channel.modes.b.includes(match1[0])) {
+                                this.state.supportedState.channel.modes.b += match1[0];
+                            }
                             const idx = match1.shift();
                             if (idx) {
                                 const result = match2.shift();
@@ -443,12 +451,15 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
                     this.state.supportedState.topiclength = parseInt(value);
                     break;
                 default:
-                    this.state.supportedState.extra.push(value);
+                    if (!this.state.supportedState.extra.includes(value)) {
+                        this.state.supportedState.extra.push(value);
+                    }
                     break;
             }
         });
         // We've probably mutated the supported state, so flush the state
         this.state.flush?.();
+        this.emit('isupport');
     }
 
     private onErrNicknameInUse(message: Message) {

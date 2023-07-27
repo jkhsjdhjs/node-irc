@@ -70,6 +70,9 @@ export class TestIrcServer {
     static generateUniqueNick(name = 'default') {
         return `${name}-${randomUUID().replace('-', '').substring(0, 8)}`;
     }
+    static generateUniqueChannel(name = 'default') {
+        return `#${this.generateUniqueNick(name)}`;
+    }
 
     public readonly clients: Record<string, TestClient> = {};
     constructor(public readonly address = DEFAULT_ADDRESS, public readonly port = DEFAULT_PORT) { }
@@ -82,12 +85,16 @@ export class TestIrcServer {
                     port: this.port,
                     autoConnect: false,
                     connectionTimeout: 4000,
+                    debug: true,
                 });
             this.clients[clientName] = client;
-            connections.push(new Promise<void>((resolve, reject) => {
+            // Make sure we load isupport before reporting readyness.
+            const isupportEvent = client.waitForEvent('isupport').then(() => { /* not interested in the value */ });
+            const connectionPromise = new Promise<void>((resolve, reject) => {
                 client.once('error', e => reject(e));
                 client.connect(resolve)
-            }));
+            }).then(() => isupportEvent);
+            connections.push(connectionPromise);
         }
         await Promise.all(connections);
     }
