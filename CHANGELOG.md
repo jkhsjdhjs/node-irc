@@ -1,3 +1,18 @@
+2.1.0 (2023-07-27)
+==================
+
+Bugfixes
+--------
+
+- Fix values in isupport duplicating if multiple version responses are returned. ([\#108](https://github.com/matrix-org/node-irc/issues/108))
+
+
+Internal Changes
+----------------
+
+- Migrate to using Jest for all tests. ([\#106](https://github.com/matrix-org/node-irc/issues/106))
+
+
 2.0.1 (2023-05-18)
 ==================
 
