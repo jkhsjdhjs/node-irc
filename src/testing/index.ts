@@ -70,6 +70,9 @@ export class TestIrcServer {
     static generateUniqueNick(name = 'default') {
         return `${name}-${randomUUID().replace('-', '').substring(0, 8)}`;
     }
+    static generateUniqueChannel(name = 'default') {
+        return `#${this.generateUniqueNick(name)}`;
+    }
 
     public readonly clients: Record<string, TestClient> = {};
     constructor(public readonly address = DEFAULT_ADDRESS, public readonly port = DEFAULT_PORT) { }
@@ -82,6 +85,7 @@ export class TestIrcServer {
                     port: this.port,
                     autoConnect: false,
                     connectionTimeout: 4000,
+                    debug: true,
                 });
             this.clients[clientName] = client;
             // Make sure we load isupport before reporting readyness.
