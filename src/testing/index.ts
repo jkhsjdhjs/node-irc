@@ -78,7 +78,7 @@ export class TestIrcServer {
     constructor(public readonly address = DEFAULT_ADDRESS, public readonly port = DEFAULT_PORT) { }
 
     async setUp(clients = ['speaker', 'listener']) {
-        const connections: Promise<void>[] = [];
+        const connections: Promise<unknown>[] = [];
         for (const clientName of clients) {
             const client =
                 new TestClient(this.address, TestIrcServer.generateUniqueNick(clientName), {
@@ -89,7 +89,7 @@ export class TestIrcServer {
                 });
             this.clients[clientName] = client;
             // Make sure we load isupport before reporting readyness.
-            const isupportEvent = client.waitForEvent('isupport').then(() => undefined);
+            const isupportEvent = client.waitForEvent('isupport');
             const connectionPromise = new Promise<void>((resolve, reject) => {
                 client.once('error', e => reject(e));
                 client.connect(resolve)
