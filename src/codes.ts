@@ -157,6 +157,10 @@ export const replyCodes = {
         name: 'rpl_globalusers',
         type: 'reply'
     },
+    276: {
+        name: 'rpl_whoiscertfp',
+        type: 'reply',
+    },
     300: {
         name: 'rpl_none',
         type: 'reply'
