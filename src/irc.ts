@@ -1697,6 +1697,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         if (onlyIfExists && !this.state.whoisData.has(nick)) {return;}
         const data: WhoisResponse = this.state.whoisData.get(nick) || { nick };
         // Note: Type unsafety, it's possible we might be trying to insert a string into a string[] or vice versa.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         data[key] = value as any;
         this.state.whoisData.set(nick, data);
     }
