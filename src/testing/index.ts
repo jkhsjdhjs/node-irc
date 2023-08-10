@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { Client, ClientEvents, Message } from '..';
+import { Client, ClientEvents, IrcClientOpts, Message } from '..';
 
 const DEFAULT_PORT = parseInt(process.env.IRC_TEST_PORT ?? '6667', 10);
 const DEFAULT_ADDRESS = process.env.IRC_TEST_ADDRESS ?? "127.0.0.1";
@@ -75,7 +75,10 @@ export class TestIrcServer {
     }
 
     public readonly clients: Record<string, TestClient> = {};
-    constructor(public readonly address = DEFAULT_ADDRESS, public readonly port = DEFAULT_PORT) { }
+    constructor(
+        public readonly address = DEFAULT_ADDRESS, public readonly port = DEFAULT_PORT,
+        public readonly customConfig: Partial<IrcClientOpts> = {}
+    ) { }
 
     async setUp(clients = ['speaker', 'listener']) {
         const connections: Promise<void>[] = [];
@@ -86,6 +89,7 @@ export class TestIrcServer {
                     autoConnect: false,
                     connectionTimeout: 4000,
                     debug: true,
+                    ...this.customConfig,
                 });
             this.clients[clientName] = client;
             // Make sure we load isupport before reporting readyness.
