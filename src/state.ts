@@ -14,6 +14,7 @@ export interface WhoisResponse {
     account?: string;
     accountinfo?: string;
     realHost?: string;
+    certfp?: string;
 }
 
 export interface IrcSupported {

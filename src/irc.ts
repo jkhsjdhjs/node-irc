@@ -1052,6 +1052,8 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
                 return this._addWhoisData(message.args[1], 'serverinfo', message.args[3]);
             case 'rpl_whoisactually':
                 return this._addWhoisData(message.args[1], 'realHost', message.args[2]);
+            case 'rpl_whoiscertfp':
+                return this._addWhoisData(message.args[1], 'certfp', message.args[2]);
             case 'rpl_whoisoperator':
                 return this._addWhoisData(message.args[1], 'operator', message.args[2]);
             case 'rpl_whoisaccount':
@@ -1452,6 +1454,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
      * unmaps the client instance from the socket. The state will also need to be cleared up seperately.
      */
     public destroy() {
+        util.log('Destroying connection');
         (
             ['data', 'end', 'close', 'timeout', 'error'] as (keyof IrcConnectionEventsMap)[]
         ).forEach(evtType => {
@@ -1692,11 +1695,9 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
 
     private _addWhoisData(nick: string, key: keyof(WhoisResponse), value: string|string[], onlyIfExists = false) {
         if (onlyIfExists && !this.state.whoisData.has(nick)) {return;}
-        const data: WhoisResponse = {
-            ...this.state.whoisData.get(nick),
-            nick,
-            [key]: value,
-        };
+        const data: WhoisResponse = this.state.whoisData.get(nick) || { nick };
+        // Note: Type unsafety, it's possible we might be trying to insert a string into a string[] or vice versa.
+        data[key] = value as any;
         this.state.whoisData.set(nick, data);
     }
 
