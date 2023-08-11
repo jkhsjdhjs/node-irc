@@ -1693,12 +1693,12 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         return this.send('LIST', ...args);
     }
 
-    private _addWhoisData(nick: string, key: keyof(WhoisResponse), value: string|string[], onlyIfExists = false) {
+    private _addWhoisData<
+        K extends keyof(WhoisResponse),
+        V extends WhoisResponse[K]>(nick: string, key: K, value: V, onlyIfExists = false) {
         if (onlyIfExists && !this.state.whoisData.has(nick)) {return;}
         const data: WhoisResponse = this.state.whoisData.get(nick) || { nick };
-        // Note: Type unsafety, it's possible we might be trying to insert a string into a string[] or vice versa.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        data[key] = value as any;
+        data[key] = value;
         this.state.whoisData.set(nick, data);
     }
 
