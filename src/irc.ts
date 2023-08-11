@@ -1696,10 +1696,15 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
     private _addWhoisData<
         K extends keyof(WhoisResponse),
         V extends WhoisResponse[K]>(nick: string, key: K, value: V, onlyIfExists = false) {
-        if (onlyIfExists && !this.state.whoisData.has(nick)) {return;}
-        const data: WhoisResponse = this.state.whoisData.get(nick) || { nick };
+        let data: WhoisResponse|undefined = this.state.whoisData.get(nick);
+        if (onlyIfExists && !data) {
+            return;
+        }
+        else if (!data) {
+            data = { nick };
+            this.state.whoisData.set(nick, data);
+        }
         data[key] = value;
-        this.state.whoisData.set(nick, data);
     }
 
     private _clearWhoisData(nick: string) {
