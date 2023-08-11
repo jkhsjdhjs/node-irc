@@ -1,3 +1,12 @@
+2.2.0 (2023-08-11)
+==================
+
+Internal Changes
+----------------
+
+- Include any certfp lines in a whois response. ([\#110](https://github.com/matrix-org/node-irc/issues/110))
+
+
 2.1.0 (2023-07-27)
 ==================
 
