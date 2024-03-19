@@ -24,7 +24,7 @@
   },
   "main": "lib/index",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "license": "GPL-3.0",
   "dependencies": {
