@@ -1,3 +1,14 @@
+3.0.0 (2024-03-27)
+==================
+
+The new mimimum node version is now Node 20.
+
+Internal Changes
+----------------
+
+- Update dependencies. ([\#111](https://github.com/matrix-org/node-irc/issues/111))
+
+
 2.2.0 (2023-08-11)
 ==================
 
