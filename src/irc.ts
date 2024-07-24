@@ -1272,6 +1272,12 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
 
         // destroy old socket before allocating a new one
         if (this.isOurSocket && this.conn) {
+            // The 'close' listener is called when the socket is destroyed, which
+            // initiates another reconnect attempt. This reconnect attempt disconnects
+            // the new connection created by this control flow after the `retryDelay`.
+            // To avoid an endless reconnect loop, we need to remove the 'close'
+            // listener here before destroying the socket.
+            this.conn.removeAllListeners('close');
             this.conn.destroy();
             this.conn = undefined;
         }
