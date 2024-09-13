@@ -219,12 +219,12 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         if (opt.channelPrefixes) {
             this.state.supportedState.channel.types = opt.channelPrefixes;
         }
-        this.state.capabilities.once('serverCapabilitesReady', () => {
+        this.state.capabilities.on('serverCapabilitesReady', () => {
             this.onCapsList();
             // Flush on capabilities modified
             this.state.flush?.();
         })
-        this.state.capabilities.once('userCapabilitesReady', () => {
+        this.state.capabilities.on('userCapabilitesReady', () => {
             this.onCapsConfirmed();
             // Flush on capabilities modified
             this.state.flush?.();
@@ -1271,6 +1271,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
 
         // destroy old socket before allocating a new one
         if (this.isOurSocket && this.conn) {
+            this.unbindListeners();
             this.conn.destroy();
             this.conn = undefined;
         }
@@ -1424,6 +1425,14 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
         });
     }
 
+    private unbindListeners() {
+        (
+            ['data', 'end', 'close', 'timeout', 'error'] as (keyof IrcConnectionEventsMap)[]
+        ).forEach(evtType => {
+            this.conn?.removeAllListeners(evtType);
+        });
+    }
+
     private reconnect(retryCount: number) {
         if (!this.isOurSocket) {
             // Cannot reconnect if the socket is not ours.
@@ -1454,11 +1463,7 @@ export class Client extends (EventEmitter as unknown as new () => TypedEmitter<C
      */
     public destroy() {
         util.log('Destroying connection');
-        (
-            ['data', 'end', 'close', 'timeout', 'error'] as (keyof IrcConnectionEventsMap)[]
-        ).forEach(evtType => {
-            this.conn?.removeAllListeners(evtType);
-        });
+        this.unbindListeners();
         if (this.isOurSocket) {
             this.disconnect();
         }
